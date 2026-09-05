@@ -33,6 +33,9 @@ pub struct Config {
     pub require_lease: bool,
     #[serde(default)]
     pub stacks: Vec<StackConfig>,
+    /// Credential-holding broker mode. Mutually exclusive with local stack execution.
+    #[serde(default)]
+    pub brokers: Vec<crate::broker::TargetConfig>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -82,6 +85,7 @@ impl Default for Config {
             drift_interval: default_drift_interval(),
             require_lease: false,
             stacks: Vec::new(),
+            brokers: Vec::new(),
         }
     }
 }
@@ -96,6 +100,11 @@ impl Config {
         for s in &mut cfg.stacks {
             if s.dir.is_relative() {
                 s.dir = base.join(&s.dir);
+            }
+        }
+        for target in &mut cfg.brokers {
+            if target.token_file.is_relative() {
+                target.token_file = base.join(&target.token_file);
             }
         }
         Ok(cfg)

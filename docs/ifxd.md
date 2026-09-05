@@ -4,6 +4,10 @@
 validates and persists Program revisions, serializes mutations, observes health and
 drift, and exposes the CLI/Explorer API.
 
+It also has a separate [broker mode](brokering.md): hold an upstream credential and
+perform named-stack lifecycle calls for expiring scoped client tokens. Broker mode
+does not execute local stack source or expose the executor admin API.
+
 ## Start one stack
 
 ```console

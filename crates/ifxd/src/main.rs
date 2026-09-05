@@ -2,6 +2,7 @@
 //! revisions and durable runs, and exposes the control plane over HTTP.
 
 mod api;
+mod broker;
 mod config;
 mod watch;
 
@@ -70,9 +71,31 @@ async fn run(args: Args) -> anyhow::Result<()> {
     };
     cfg.apply_args(&args)?;
     anyhow::ensure!(
-        !cfg.stacks.is_empty(),
-        "no stacks to watch (use --stack DIR or [[stacks]] in the config)"
+        !cfg.stacks.is_empty() || !cfg.brokers.is_empty(),
+        "configure local stacks or broker targets"
     );
+    if !cfg.brokers.is_empty() {
+        anyhow::ensure!(
+            cfg.token.is_none(),
+            "broker mode uses scoped grants, not IFXD_TOKEN or --token"
+        );
+        anyhow::ensure!(
+            cfg.stacks.is_empty(),
+            "broker mode cannot compile or execute local stacks"
+        );
+        let address: std::net::SocketAddr = cfg.listen.parse()?;
+        anyhow::ensure!(
+            address.ip().is_loopback(),
+            "broker mode must listen on loopback behind a trusted TLS endpoint"
+        );
+        let app = broker::router(broker::Broker::load(&cfg.brokers)?);
+        let listener = tokio::net::TcpListener::bind(address).await?;
+        tracing::info!(listen = %address, "broker listening");
+        axum::serve(listener, app)
+            .with_graceful_shutdown(shutdown())
+            .await?;
+        return Ok(());
+    }
 
     let registry = ifx::Registry::builtin();
     // One store handle per project (database), resolved exactly as `ifx -C dir` does:

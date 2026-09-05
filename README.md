@@ -207,6 +207,7 @@ Run `ifx schema` for installed types or read the generated
 | [Rust stack authoring](labs/07-rust-program/README.md) | Builders, configuration, references, components, and iteration |
 | [CLI](docs/cli.md) | Commands, configuration, exit codes, and state operations |
 | [`ifxd`](docs/ifxd.md) | Continuous builds, revisions, runs, security, and API |
+| [Daemon brokering](docs/brokering.md) | Scoped lifecycle delegation without sharing upstream credentials |
 | [QEMU](docs/qemu.md) | Images, volumes, networks, instances, lifecycle, and prerequisites |
 | [Linode](docs/linode.md) | Compute, firewall, DNS, and lifecycle coverage |
 | [Provider authoring](docs/provider-authoring.md) | Handler lifecycle, schemas, generation, and tests |

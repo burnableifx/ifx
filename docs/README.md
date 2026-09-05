@@ -17,6 +17,7 @@ The installed CLI is authoritative for commands (`ifx --help`) and schemas
 - [CLI and configuration](cli.md) — commands, `ifx.toml`, configuration, and exit codes.
 - [`ifxd`](ifxd.md) — trusted roots, continuous builds, immutable revisions, durable
   runs, retries, approval, authentication, and the HTTP API.
+- [Daemon brokering](brokering.md) — fixed upstreams, named-stack grants, and credential custody.
 - [Resource reference](resources.md) — generated input/output and lifecycle schema.
 - [QEMU](qemu.md) and [Linode](linode.md) — provider surfaces and boundaries.
 - [Troubleshooting](troubleshooting.md) — build, state, database, SSH, and QEMU failures.
