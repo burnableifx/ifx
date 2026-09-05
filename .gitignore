@@ -1,0 +1,15 @@
+/target
+**/target/
+.ifx/
+*.state.json
+labs/05-python/typings/
+python/.venv/
+python/ifx/*.so
+__pycache__/
+*.py[cod]
+website/node_modules/
+website/dist/
+website/.astro/
+website/src/assets/ifx-mark.png
+website/src/content/docs/generated/
+website/public/assets/

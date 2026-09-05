@@ -1,0 +1,121 @@
+<section class="graph-preview" aria-labelledby="graph-title">
+  <div class="graph-heading">
+    <div>
+      <p class="eyebrow">Current graph · future lenses</p>
+      <h2 id="graph-title">Read the deployment from your point of view.</h2>
+    </div>
+    <div class="graph-tabs" role="group" aria-label="Deployment graph views">
+      <button type="button" aria-pressed="true" data-view="build">Build</button>
+      <button type="button" aria-pressed="false" data-view="utilization">Utilization</button>
+      <button type="button" aria-pressed="false" data-view="layout">Logical / physical</button>
+      <button type="button" aria-pressed="false" data-view="audience">Human / computer</button>
+    </div>
+  </div>
+
+  <div class="graph-stage" data-graph-stage>
+    <div class="graph-node graph-node--source" data-node="image">
+      <span class="node-kind">qemu.image</span>
+      <strong>Debian image</strong>
+      <small>verified · cached</small>
+    </div>
+    <span class="graph-arrow" aria-hidden="true">→</span>
+    <div class="graph-node" data-node="vm">
+      <span class="node-kind">qemu.instance</span>
+      <strong>web-01</strong>
+      <small>running · 1.0 GiB</small>
+    </div>
+    <span class="graph-arrow" aria-hidden="true">→</span>
+    <div class="graph-node" data-node="service">
+      <span class="node-kind">host.service</span>
+      <strong>nginx</strong>
+      <small>active · 42m</small>
+    </div>
+    <span class="graph-arrow" aria-hidden="true">→</span>
+    <div class="graph-node graph-node--proof" data-node="check">
+      <span class="node-kind">check.http</span>
+      <strong>public endpoint</strong>
+      <small>healthy · 8s ago</small>
+    </div>
+  </div>
+
+  <p class="graph-note" data-graph-note aria-live="polite">
+    References carry values and ordering: image before VM, VM before service, service before proof.
+  </p>
+  <p class="graph-status">
+    Dependency, provider, health, and lifecycle views work today. Utilization and semantic lenses require explicit telemetry and resource metadata; this preview shows the intended interaction without claiming inferred data.
+  </p>
+</section>
+
+<script>
+  const views = {
+    build: {
+      nodes: [
+        ['qemu.image', 'Debian image', 'verified · cached'],
+        ['qemu.instance', 'web-01', 'running · 1.0 GiB'],
+        ['host.service', 'nginx', 'active · 42m'],
+        ['check.http', 'public endpoint', 'healthy · 8s ago'],
+      ],
+      note: 'References carry values and ordering: image before VM, VM before service, service before proof.',
+    },
+    utilization: {
+      nodes: [
+        ['artifact telemetry', 'Image cache', 'storage metric · planned'],
+        ['provider telemetry', 'Virtual machine', 'CPU + RAM · planned'],
+        ['host telemetry', 'Web service', 'process metric · planned'],
+        ['health history', 'HTTP proof', 'passing · observed'],
+      ],
+      note: 'Planned: provider and host telemetry will turn the same graph into a capacity surface without inventing utilization from configuration.',
+    },
+    layout: {
+      nodes: [
+        ['artifact', 'Base image', '/var/lib/ifx/images'],
+        ['physical', 'QEMU process', 'host: buildbox'],
+        ['logical', 'Web role', 'network: frontend'],
+        ['boundary', 'Public route', 'http://127.0.0.1:8080'],
+      ],
+      note: 'Logical roles stay connected to the physical processes, disks, networks, and endpoints that implement them.',
+    },
+    audience: {
+      nodes: [
+        ['input', 'Golden image', 'sha256 verified'],
+        ['machine', 'qemu.instance:web-01', 'pid 18742'],
+        ['human', 'Website', 'customer-facing'],
+        ['promise', 'Available', 'required check'],
+      ],
+      note: 'Human-facing intent and machine-facing identity remain different views of the same reconciled deployment.',
+    },
+  };
+
+  const stages = document.querySelectorAll('[data-graph-stage]');
+
+  for (const stage of stages) {
+    const preview = stage.closest('.graph-preview');
+    const note = preview?.querySelector('[data-graph-note]');
+    const buttons = preview?.querySelectorAll('button[data-view]');
+    const nodes = stage.querySelectorAll('[data-node]');
+
+    buttons?.forEach((button) => {
+      button.addEventListener('click', () => {
+        const viewName = button.getAttribute('data-view');
+        const view = viewName && views[viewName as keyof typeof views];
+        if (!view) return;
+
+        buttons.forEach((candidate) => {
+          candidate.setAttribute('aria-pressed', String(candidate === button));
+        });
+
+        nodes.forEach((node, index) => {
+          const [kind, name, detail] = view.nodes[index];
+          const kindElement = node.querySelector('.node-kind');
+          const nameElement = node.querySelector('strong');
+          const detailElement = node.querySelector('small');
+          if (kindElement) kindElement.textContent = kind;
+          if (nameElement) nameElement.textContent = name;
+          if (detailElement) detailElement.textContent = detail;
+        });
+
+        if (note) note.textContent = view.note;
+      });
+    });
+  }
+</script>

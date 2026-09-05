@@ -1,0 +1,50 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/ifx",
+    "crates/ifx-cli",
+    "crates/ifxd",
+    "crates/ifx-gen",
+    "crates/ifx-labs",
+    "crates/ifx-program",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/burnableifx/ifx"
+rust-version = "1.85"
+
+[workspace.dependencies]
+ifx = { path = "crates/ifx" }
+ifx-program = { path = "crates/ifx-program", default-features = false }
+anyhow = "1"
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.9"
+async-trait = "0.1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "process", "fs", "io-util", "sync", "time", "signal", "net"] }
+futures = "0.3"
+fs2 = "0.4"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+clap = { version = "4", features = ["derive", "env"] }
+sha2 = "0.10"
+hex = "0.4"
+base64 = "0.22"
+shell-escape = "0.1"
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
+surrealdb = { version = "2.6", default-features = false, features = ["kv-mem", "kv-surrealkv", "protocol-ws", "rustls"] }
+axum = { version = "0.8", features = ["json", "tokio", "http1"] }
+humantime-serde = "1"
+libc = "0.2"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+bon = "3"
+tempfile = "3"
+wiremock = "0.6"
+
+[profile.release]
+lto = "thin"
+strip = true

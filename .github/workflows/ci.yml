@@ -1,0 +1,70 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets --locked
+      - run: cargo run -p ifx-gen --locked -- --check
+      - run: cargo run -p ifx-cli --locked -- stubs markdown -o /tmp/resources.md && diff -u docs/resources.md /tmp/resources.md
+      - run: cargo test --workspace --locked
+      - name: Check standalone Rust stacks
+        run: |
+          for manifest in \
+            labs/01-first-stack/Cargo.toml \
+            labs/02-references-and-loops/Cargo.toml \
+            labs/03-lifecycle/Cargo.toml \
+            labs/04-health-and-daemon/Cargo.toml \
+            labs/05-components/Cargo.toml \
+            labs/08-qemu/Cargo.toml \
+            labs/09-deployment-explorer/Cargo.toml \
+            examples/local-files/Cargo.toml \
+            examples/qemu-web/Cargo.toml \
+            examples/linode-web/Cargo.toml \
+            examples/rust-program/Cargo.toml
+          do
+            cargo check --locked --manifest-path "$manifest"
+          done
+        env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}/ifx-stack-checks
+      - run: cargo run -p ifx-labs --locked -- docs
+      - run: cargo build -p ifx-cli -p ifxd -p ifx-labs --locked
+      - run: target/debug/ifx-labs run 1 2 3 4 5 9
+        env:
+          IFX_CACHE_DIR: ${{ runner.temp }}/ifx-cache
+
+  website:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - run: npm ci
+        working-directory: website
+      - run: npm run check
+        working-directory: website
+        env:
+          SITE_URL: https://docs.example.com
+
+  deny:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2

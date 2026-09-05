@@ -1,0 +1,6 @@
+name = "lab04"
+file = "Cargo.toml"
+
+[config]
+base = "/tmp/ifx-lab/04"
+port = 8765

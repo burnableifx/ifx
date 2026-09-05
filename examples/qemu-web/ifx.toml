@@ -1,0 +1,6 @@
+name = "qemu-web"
+file = "Cargo.toml"
+
+[config]
+memory_mb = 512
+http_port = 38180

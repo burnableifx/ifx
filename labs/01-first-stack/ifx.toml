@@ -1,0 +1,5 @@
+name = "lab01"
+file = "Cargo.toml"
+
+[config]
+base = "/tmp/ifx-lab/01"

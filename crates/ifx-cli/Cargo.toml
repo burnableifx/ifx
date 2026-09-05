@@ -1,0 +1,18 @@
+[package]
+name = "ifx-cli"
+description = "CLI for compiling and operating Rust infrastructure stacks through ifxd."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "ifx"
+path = "src/main.rs"
+
+[dependencies]
+ifx.workspace = true
+anyhow.workspace = true
+tokio.workspace = true
+clap.workspace = true

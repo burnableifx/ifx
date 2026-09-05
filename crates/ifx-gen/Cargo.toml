@@ -1,0 +1,22 @@
+[package]
+name = "ifx-gen"
+description = "Generates typed Rust stack builders from IFX resource schemas."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[[bin]]
+name = "ifx-gen"
+path = "src/main.rs"
+
+[dependencies]
+ifx.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+serde.workspace = true
+reqwest.workspace = true
+tokio.workspace = true

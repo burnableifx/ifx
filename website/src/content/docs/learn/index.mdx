@@ -1,0 +1,61 @@
+---
+title: Learn by operating the graph
+description: A local-first path from the first reconciliation loop to interconnected virtual machines and durable deployment operations.
+---
+
+import { Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+Start with a disposable local file, then add references, lifecycle controls, health checks, and the daemon boundary. The final local labs boot real Debian guests with QEMU and expose the live deployment through the Explorer.
+
+<Steps>
+
+1. **See reconciliation in five minutes.** Run the first stack, apply it twice, introduce drift, and let ifx repair the observed system.
+
+   [Start with Lab 1 →](/learn/labs/01-first-stack/)
+
+2. **Learn how the graph is formed.** Pass outputs between resources, add explicit ordering, and understand replacement and protection.
+
+   [Continue through the lab sequence →](/learn/labs/)
+
+3. **Build real local infrastructure.** Download a verified cloud image, create a rootless network, boot three VMs, and configure them through the same `host.*` resources used in the cloud.
+
+   [Run the QEMU lab →](/learn/labs/08-qemu/)
+
+4. **Operate instead of guessing.** Inspect topology, health, drift, approvals, retries, and durable execution history through `ifxd`.
+
+   [Use the Deployment Explorer →](/learn/labs/09-deployment-explorer/)
+
+</Steps>
+
+## Choose your route
+
+<CardGrid>
+  <Card title="I write stacks" icon="seti:rust">
+    Learn the generated Rust builders, deferred values, validation, and the Program IR boundary.
+
+    [Getting started →](/learn/getting-started/)
+  </Card>
+  <Card title="I operate deployments" icon="setting">
+    Learn durable runs, retry-now, cancellation, approval waits, recovery, health, and daemon security.
+
+    [ifxd operations →](/guides/ifxd/)
+  </Card>
+  <Card title="I build providers" icon="puzzle">
+    Follow the handler lifecycle, schema conventions, identity rules, generation pipeline, and test layers.
+
+    [Provider authoring →](/reference/provider-authoring/)
+  </Card>
+</CardGrid>
+
+## Watch before you run
+
+<a class="cast-link" href="/assets/labs/casts/lab-8.cast">
+  <img
+    class="cast-preview"
+    src="/posters/lab-8.webp"
+    alt="Still frame from the IFX QEMU lab terminal walkthrough"
+    loading="lazy"
+  />
+</a>
+
+The recording uses the same commands as the executable lab. Commentary lines explain why each step runs and what matters in its output. [Open the animated GIF](/assets/labs/media/lab-8.gif) or play the linked asciinema cast when you are ready.

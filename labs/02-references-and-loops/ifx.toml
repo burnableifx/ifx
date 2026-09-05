@@ -1,0 +1,6 @@
+name = "lab02"
+file = "Cargo.toml"
+
+[config]
+base = "/tmp/ifx-lab/02"
+nodes = 3

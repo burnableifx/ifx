@@ -1,0 +1,12 @@
+[package]
+name = "ifx-rust-program-example"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+ifx-program = { path = "../../crates/ifx-program", default-features = false, features = [
+    "host",
+] }

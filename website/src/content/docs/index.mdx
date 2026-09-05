@@ -1,0 +1,59 @@
+---
+title: Infrastructure as one reconciled graph
+description: Declare infrastructure, configure hosts, and prove the result in one observable deployment graph.
+template: splash
+hero:
+  title: Infrastructure as one reconciled graph.
+  tagline: Declare cloud resources, local virtual machines, host configuration, and the checks that prove them—then let one durable engine reconcile the whole system.
+  actions:
+    - text: Start the first lab
+      link: /learn/getting-started/
+      icon: right-arrow
+      variant: primary
+    - text: Explore the model
+      link: /concepts/design/
+      icon: open-book
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+import GraphPreview from '../../components/GraphPreview.astro';
+
+<p class="eyebrow">DECLARE · RECONCILE · PROVE</p>
+
+## Stop handing the machine off between tools
+
+<CardGrid>
+  <Card title="Declare the whole system" icon="seti:rust">
+    Use typed Rust to describe provider resources, files, packages, services, and required checks.
+  </Card>
+  <Card title="Reconcile one graph" icon="seti:config">
+    References carry values and dependency order. One plan observes both provider APIs and the hosts they create.
+  </Card>
+  <Card title="Prove the outcome" icon="approve-check">
+    Health checks live beside the resources they verify. ifxd retains execution, drift, approval, and recovery history.
+  </Card>
+</CardGrid>
+
+<GraphPreview />
+
+## Learn on real infrastructure without a cloud bill
+
+The local path starts with files, progresses through dependency and lifecycle semantics, then boots interconnected Debian VMs with QEMU. Every published lab is executable, narrated, and repeatable.
+
+<CardGrid>
+  <Card title="Five-minute loop" icon="rocket">
+    Plan, apply, prove idempotence, introduce drift, and repair it with local files.
+
+    [Run Lab 1 →](/learn/labs/01-first-stack/)
+  </Card>
+  <Card title="Complete local deployment" icon="laptop">
+    Build a rootless network, boot three VMs, configure them over SSH, and test traffic between them.
+
+    [Run the QEMU lab →](/learn/labs/08-qemu/)
+  </Card>
+  <Card title="Operate the graph" icon="analytics">
+    Inspect topology and health, trigger checks, detect drift, repair the deployment, and follow durable run history.
+
+    [Open the Explorer tutorial →](/learn/labs/09-deployment-explorer/)
+  </Card>
+</CardGrid>

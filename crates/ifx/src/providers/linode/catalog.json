@@ -1,0 +1,556 @@
+{
+  "regions": [
+    {
+      "id": "gb-lon",
+      "label": "London 2, UK"
+    },
+    {
+      "id": "se-sto",
+      "label": "Stockholm, SE"
+    },
+    {
+      "id": "es-mad",
+      "label": "Madrid, ES"
+    },
+    {
+      "id": "in-maa",
+      "label": "Chennai, IN"
+    },
+    {
+      "id": "jp-osa",
+      "label": "Osaka, JP"
+    },
+    {
+      "id": "it-mil",
+      "label": "Milan, IT"
+    },
+    {
+      "id": "us-mia",
+      "label": "Miami, FL"
+    },
+    {
+      "id": "id-cgk",
+      "label": "Jakarta, ID"
+    },
+    {
+      "id": "us-lax",
+      "label": "Los Angeles, CA"
+    },
+    {
+      "id": "nl-ams",
+      "label": "Amsterdam, NL"
+    },
+    {
+      "id": "au-mel",
+      "label": "Melbourne, AU"
+    },
+    {
+      "id": "in-bom-2",
+      "label": "Mumbai 2, IN"
+    },
+    {
+      "id": "de-fra-2",
+      "label": "Frankfurt 2, DE"
+    },
+    {
+      "id": "sg-sin-2",
+      "label": "Singapore 2, SG"
+    },
+    {
+      "id": "jp-tyo-3",
+      "label": "Tokyo 3, JP"
+    },
+    {
+      "id": "us-iad-2",
+      "label": "Washington 2, DC"
+    },
+    {
+      "id": "fr-par-2",
+      "label": "Paris 2, FR"
+    },
+    {
+      "id": "br-gru",
+      "label": "Sao Paulo, BR"
+    },
+    {
+      "id": "us-sea",
+      "label": "Seattle, WA"
+    },
+    {
+      "id": "fr-par",
+      "label": "Paris, FR"
+    },
+    {
+      "id": "us-ord",
+      "label": "Chicago, IL"
+    },
+    {
+      "id": "us-iad",
+      "label": "Washington, DC"
+    },
+    {
+      "id": "ap-southeast",
+      "label": "Sydney, AU"
+    },
+    {
+      "id": "ca-central",
+      "label": "Toronto, CA"
+    },
+    {
+      "id": "ap-west",
+      "label": "Mumbai, IN"
+    },
+    {
+      "id": "us-central",
+      "label": "Dallas, TX"
+    },
+    {
+      "id": "ap-northeast",
+      "label": "Tokyo 2, JP"
+    },
+    {
+      "id": "eu-central",
+      "label": "Frankfurt, DE"
+    },
+    {
+      "id": "ap-south",
+      "label": "Singapore, SG"
+    },
+    {
+      "id": "eu-west",
+      "label": "London, UK"
+    },
+    {
+      "id": "us-east",
+      "label": "Newark, NJ"
+    },
+    {
+      "id": "us-southeast",
+      "label": "Atlanta, GA"
+    },
+    {
+      "id": "us-west",
+      "label": "Fremont, CA"
+    }
+  ],
+  "types": [
+    {
+      "id": "g6-nanode-1",
+      "label": "Nanode 1GB"
+    },
+    {
+      "id": "g6-standard-1",
+      "label": "Linode 2GB"
+    },
+    {
+      "id": "g6-standard-2",
+      "label": "Linode 4GB"
+    },
+    {
+      "id": "g6-standard-4",
+      "label": "Linode 8GB"
+    },
+    {
+      "id": "g6-standard-6",
+      "label": "Linode 16GB"
+    },
+    {
+      "id": "g6-standard-8",
+      "label": "Linode 32GB"
+    },
+    {
+      "id": "g6-standard-16",
+      "label": "Linode 64GB"
+    },
+    {
+      "id": "g6-standard-20",
+      "label": "Linode 96GB"
+    },
+    {
+      "id": "g6-standard-24",
+      "label": "Linode 128GB"
+    },
+    {
+      "id": "g6-standard-32",
+      "label": "Linode 192GB"
+    },
+    {
+      "id": "g7-highmem-1",
+      "label": "Linode 24GB"
+    },
+    {
+      "id": "g7-highmem-2",
+      "label": "Linode 48GB"
+    },
+    {
+      "id": "g7-highmem-4",
+      "label": "Linode 90GB"
+    },
+    {
+      "id": "g7-highmem-8",
+      "label": "Linode 150GB"
+    },
+    {
+      "id": "g7-highmem-16",
+      "label": "Linode 300GB"
+    },
+    {
+      "id": "g6-dedicated-2",
+      "label": "Dedicated 4GB"
+    },
+    {
+      "id": "g6-dedicated-4",
+      "label": "Dedicated 8GB"
+    },
+    {
+      "id": "g6-dedicated-8",
+      "label": "Dedicated 16GB"
+    },
+    {
+      "id": "g6-dedicated-16",
+      "label": "Dedicated 32GB"
+    },
+    {
+      "id": "g6-dedicated-32",
+      "label": "Dedicated 64GB"
+    },
+    {
+      "id": "g6-dedicated-48",
+      "label": "Dedicated 96GB"
+    },
+    {
+      "id": "g6-dedicated-50",
+      "label": "Dedicated 128GB"
+    },
+    {
+      "id": "g6-dedicated-56",
+      "label": "Dedicated 256GB"
+    },
+    {
+      "id": "g1-gpu-rtx6000-1",
+      "label": "Dedicated 32GB + RTX6000 GPU x1"
+    },
+    {
+      "id": "g1-gpu-rtx6000-2",
+      "label": "Dedicated 64GB + RTX6000 GPU x2"
+    },
+    {
+      "id": "g1-gpu-rtx6000-3",
+      "label": "Dedicated 96GB + RTX6000 GPU x3"
+    },
+    {
+      "id": "g1-gpu-rtx6000-4",
+      "label": "Dedicated 128GB + RTX6000 GPU x4"
+    },
+    {
+      "id": "g7-premium-2",
+      "label": "Premium 4GB"
+    },
+    {
+      "id": "g7-premium-4",
+      "label": "Premium 8GB"
+    },
+    {
+      "id": "g7-premium-8",
+      "label": "Premium 16GB"
+    },
+    {
+      "id": "g7-premium-16",
+      "label": "Premium 32GB"
+    },
+    {
+      "id": "g7-premium-32",
+      "label": "Premium 64GB"
+    },
+    {
+      "id": "g7-premium-48",
+      "label": "Premium 96GB"
+    },
+    {
+      "id": "g7-premium-50",
+      "label": "Premium 128GB"
+    },
+    {
+      "id": "g7-premium-56",
+      "label": "Premium 256GB"
+    },
+    {
+      "id": "g2-gpu-rtx4000a1-s",
+      "label": "RTX4000 Ada x1 Small"
+    },
+    {
+      "id": "g2-gpu-rtx4000a1-m",
+      "label": "RTX4000 Ada x1 Medium"
+    },
+    {
+      "id": "g2-gpu-rtx4000a1-l",
+      "label": "RTX4000 Ada x1 Large"
+    },
+    {
+      "id": "g2-gpu-rtx4000a1-xl",
+      "label": "RTX4000 Ada x1 X-Large"
+    },
+    {
+      "id": "g2-gpu-rtx4000a2-s",
+      "label": "RTX4000 Ada x2 Small"
+    },
+    {
+      "id": "g2-gpu-rtx4000a2-m",
+      "label": "RTX4000 Ada x2 Medium"
+    },
+    {
+      "id": "g2-gpu-rtx4000a2-hs",
+      "label": "RTX4000 Ada x2 Medium High Storage"
+    },
+    {
+      "id": "g2-gpu-rtx4000a4-s",
+      "label": "RTX4000 Ada x4 Small"
+    },
+    {
+      "id": "g2-gpu-rtx4000a4-m",
+      "label": "RTX4000 Ada x4 Medium"
+    },
+    {
+      "id": "g1-accelerated-netint-vpu-t1u1-s",
+      "label": "NETINT Quadra T1U x1 Small"
+    },
+    {
+      "id": "g1-accelerated-netint-vpu-t1u1-m",
+      "label": "NETINT Quadra T1U x1 Medium"
+    },
+    {
+      "id": "g1-accelerated-netint-vpu-t1u2-s",
+      "label": "NETINT Quadra T1U x2 Small"
+    },
+    {
+      "id": "g1-accelerated-netint-vpu-t1u8-s",
+      "label": "NETINT Quadra T1U x8 Small"
+    },
+    {
+      "id": "g1-accelerated-netint-vpu-t1u8-m",
+      "label": "NETINT Quadra T1U x8 Medium"
+    },
+    {
+      "id": "g1-accelerated-netint-vpu-t1u8-l",
+      "label": "NETINT Quadra T1U x8 Large"
+    },
+    {
+      "id": "g8-dedicated-4-2",
+      "label": "G8 Dedicated 4x2"
+    },
+    {
+      "id": "g8-dedicated-8-4",
+      "label": "G8 Dedicated 8x4"
+    },
+    {
+      "id": "g8-dedicated-16-8",
+      "label": "G8 Dedicated 16x8"
+    },
+    {
+      "id": "g8-dedicated-32-16",
+      "label": "G8 Dedicated 32x16"
+    },
+    {
+      "id": "g8-dedicated-64-32",
+      "label": "G8 Dedicated 64x32"
+    },
+    {
+      "id": "g8-dedicated-96-48",
+      "label": "G8 Dedicated 96x48"
+    },
+    {
+      "id": "g8-dedicated-128-64",
+      "label": "G8 Dedicated 128x64"
+    },
+    {
+      "id": "g8-dedicated-256-128",
+      "label": "G8 Dedicated 256x128"
+    },
+    {
+      "id": "g8-dedicated-512-256",
+      "label": "G8 Dedicated 512x256"
+    },
+    {
+      "id": "g8-dedicated-8-2",
+      "label": "G8 Dedicated 8x2"
+    },
+    {
+      "id": "g8-dedicated-16-4",
+      "label": "G8 Dedicated 16x4"
+    },
+    {
+      "id": "g8-dedicated-32-8",
+      "label": "G8 Dedicated 32x8"
+    },
+    {
+      "id": "g8-dedicated-64-16",
+      "label": "G8 Dedicated 64x16"
+    },
+    {
+      "id": "g8-dedicated-96-24",
+      "label": "G8 Dedicated 96x24"
+    },
+    {
+      "id": "g8-dedicated-128-32",
+      "label": "G8 Dedicated 128x32"
+    },
+    {
+      "id": "g8-dedicated-256-64",
+      "label": "G8 Dedicated 256x64"
+    },
+    {
+      "id": "g8-dedicated-512-128",
+      "label": "G8 Dedicated 512x128"
+    },
+    {
+      "id": "g7-dedicated-4-2",
+      "label": "G7 Dedicated 4x2"
+    },
+    {
+      "id": "g7-dedicated-8-4",
+      "label": "G7 Dedicated 8x4"
+    },
+    {
+      "id": "g7-dedicated-16-8",
+      "label": "G7 Dedicated 16x8"
+    },
+    {
+      "id": "g7-dedicated-32-16",
+      "label": "G7 Dedicated 32x16"
+    },
+    {
+      "id": "g7-dedicated-64-32",
+      "label": "G7 Dedicated 64x32"
+    },
+    {
+      "id": "g7-dedicated-96-48",
+      "label": "G7 Dedicated 96x48"
+    },
+    {
+      "id": "g7-dedicated-128-50",
+      "label": "G7 Dedicated 128x50"
+    },
+    {
+      "id": "g7-dedicated-256-56",
+      "label": "G7 Dedicated 256x56"
+    }
+  ],
+  "images": [
+    {
+      "id": "linode/almalinux10",
+      "label": "AlmaLinux 10"
+    },
+    {
+      "id": "linode/almalinux8",
+      "label": "AlmaLinux 8"
+    },
+    {
+      "id": "linode/almalinux9",
+      "label": "AlmaLinux 9"
+    },
+    {
+      "id": "linode/alpine3.21",
+      "label": "Alpine 3.21"
+    },
+    {
+      "id": "linode/alpine3.22",
+      "label": "Alpine 3.22"
+    },
+    {
+      "id": "linode/alpine3.23",
+      "label": "Alpine 3.23"
+    },
+    {
+      "id": "linode/alpine3.24",
+      "label": "Alpine 3.24"
+    },
+    {
+      "id": "linode/arch",
+      "label": "Arch Linux"
+    },
+    {
+      "id": "linode/centos-stream10",
+      "label": "CentOS Stream 10"
+    },
+    {
+      "id": "linode/centos-stream9",
+      "label": "CentOS Stream 9"
+    },
+    {
+      "id": "linode/debian11",
+      "label": "Debian 11"
+    },
+    {
+      "id": "linode/debian12",
+      "label": "Debian 12"
+    },
+    {
+      "id": "linode/debian13",
+      "label": "Debian 13"
+    },
+    {
+      "id": "linode/fedora43",
+      "label": "Fedora 43"
+    },
+    {
+      "id": "linode/gentoo",
+      "label": "Gentoo"
+    },
+    {
+      "id": "linode/kali",
+      "label": "Kali Linux"
+    },
+    {
+      "id": "linode/debian13-kube-v1.34.9",
+      "label": "Kubernetes 1.34.9 on Debian 13"
+    },
+    {
+      "id": "linode/debian13-kube-v1.35.6",
+      "label": "Kubernetes 1.35.6 on Debian 13"
+    },
+    {
+      "id": "linode/debian13-kube-v1.36.2",
+      "label": "Kubernetes 1.36.2 on Debian 13"
+    },
+    {
+      "id": "linode/debian13-kube-v1.36.3",
+      "label": "Kubernetes 1.36.3 on Debian 13"
+    },
+    {
+      "id": "linode/rocky10",
+      "label": "Rocky Linux 10"
+    },
+    {
+      "id": "linode/rocky8",
+      "label": "Rocky Linux 8"
+    },
+    {
+      "id": "linode/rocky9",
+      "label": "Rocky Linux 9"
+    },
+    {
+      "id": "linode/slackware15.0",
+      "label": "Slackware 15.0"
+    },
+    {
+      "id": "linode/ubuntu22.04",
+      "label": "Ubuntu 22.04 LTS"
+    },
+    {
+      "id": "linode/ubuntu22.04-kube",
+      "label": "Ubuntu 22.04 LTS KPP"
+    },
+    {
+      "id": "linode/ubuntu24.04-kube-vmulti",
+      "label": "Ubuntu 24.04 for LKE"
+    },
+    {
+      "id": "linode/ubuntu24.04",
+      "label": "Ubuntu 24.04 LTS"
+    },
+    {
+      "id": "linode/ubuntu26.04",
+      "label": "Ubuntu 26.04 LTS"
+    }
+  ]
+}

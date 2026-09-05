@@ -1,0 +1,8 @@
+# The project name is included in daemon-emitted Program revisions.
+name = "linode-web"
+file = "Cargo.toml"
+
+[config]
+region = "us-east"
+nodes = 2
+root_pass = "change-me-before-apply"

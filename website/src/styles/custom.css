@@ -1,0 +1,228 @@
+:root {
+  --sl-color-accent-low: #123c42;
+  --sl-color-accent: #68e0cf;
+  --sl-color-accent-high: #d9fffa;
+  --sl-color-white: #edf4fb;
+  --sl-color-gray-1: #dce8f3;
+  --sl-color-gray-2: #a9bac9;
+  --sl-color-gray-3: #718496;
+  --sl-color-gray-4: #3b4a5a;
+  --sl-color-gray-5: #1d2935;
+  --sl-color-gray-6: #101722;
+  --sl-color-black: #080c14;
+  --ifx-blue: #55a7ff;
+  --ifx-green: #69d391;
+  --ifx-coral: #ff6b7d;
+}
+
+body {
+  background:
+    radial-gradient(circle at 12% 0%, rgb(85 167 255 / 10%), transparent 28rem),
+    var(--sl-color-bg);
+}
+
+.site-title img {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.45rem;
+}
+
+[data-has-hero] .hero {
+  padding-block: clamp(4rem, 10vw, 8rem) clamp(2.5rem, 6vw, 5rem);
+}
+
+[data-has-hero] .hero h1 {
+  max-width: 12ch;
+  font-size: clamp(3rem, 8vw, 6.8rem);
+  line-height: 0.92;
+  letter-spacing: -0.065em;
+}
+
+[data-has-hero] .tagline {
+  max-width: 42rem;
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+}
+
+.graph-preview {
+  margin-block: clamp(3rem, 8vw, 7rem);
+  padding: clamp(1.1rem, 3vw, 2.25rem);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--sl-color-gray-4) 70%, transparent);
+  border-radius: 1.25rem;
+  background:
+    linear-gradient(135deg, rgb(104 224 207 / 8%), transparent 42%),
+    var(--sl-color-gray-6);
+  box-shadow: 0 2rem 5rem rgb(0 0 0 / 22%);
+}
+
+.graph-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.graph-heading h2 {
+  max-width: 20ch;
+  margin: 0;
+  font-size: clamp(1.7rem, 4vw, 3rem);
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+}
+
+.eyebrow,
+.node-kind {
+  color: var(--sl-color-accent);
+  font-family: var(--__sl-font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.graph-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.3rem;
+  border: 1px solid var(--sl-color-gray-4);
+  border-radius: 0.75rem;
+  background: rgb(8 12 20 / 92%);
+}
+
+.graph-tabs button {
+  padding: 0.5rem 0.7rem;
+  border: 0;
+  border-radius: 0.5rem;
+  color: #a9bac9;
+  background: transparent;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.graph-tabs button[aria-pressed='true'] {
+  color: #080c14;
+  background: #68e0cf;
+}
+
+.graph-tabs button:focus-visible {
+  outline: 2px solid var(--ifx-blue);
+  outline-offset: 2px;
+}
+
+.graph-stage {
+  display: grid;
+  grid-template-columns: minmax(9rem, 1fr) auto minmax(9rem, 1fr) auto minmax(9rem, 1fr) auto minmax(9rem, 1fr);
+  align-items: center;
+  gap: 0.65rem;
+  margin-block: 2.5rem 1.35rem;
+}
+
+.graph-node {
+  display: grid;
+  min-height: 8.5rem;
+  align-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--sl-color-gray-4);
+  border-radius: 0.8rem;
+  color: #edf4fb;
+  background: rgb(8 12 20 / 92%);
+  transition: border-color 180ms ease, transform 180ms ease;
+}
+
+.graph-node:hover {
+  border-color: var(--sl-color-accent);
+  transform: translateY(-0.2rem);
+}
+
+.graph-node strong {
+  font-size: 1.05rem;
+}
+
+.graph-node small {
+  color: #a9bac9;
+  font-family: var(--__sl-font-mono);
+  font-size: 0.68rem;
+}
+
+.graph-node .node-kind {
+  color: #68e0cf;
+}
+
+.graph-node--source {
+  border-color: color-mix(in srgb, var(--ifx-blue) 65%, var(--sl-color-gray-4));
+}
+
+.graph-node--proof {
+  border-color: color-mix(in srgb, var(--ifx-green) 65%, var(--sl-color-gray-4));
+}
+
+.graph-arrow {
+  color: var(--sl-color-accent);
+  font-size: 1.35rem;
+}
+
+.graph-note {
+  max-width: 64rem;
+  margin: 0;
+  color: var(--sl-color-gray-2);
+}
+
+.graph-status {
+  max-width: 64rem;
+  margin: 0.75rem 0 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--sl-color-gray-5);
+  color: var(--sl-color-gray-3);
+  font-size: 0.78rem;
+}
+
+.cast-link {
+  display: block;
+  overflow: hidden;
+  border: 1px solid var(--sl-color-gray-4);
+  border-radius: 1rem;
+  background: var(--sl-color-gray-6);
+  box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 20%);
+}
+
+.cast-preview {
+  display: block;
+  width: 100%;
+  margin: 0;
+  transition: transform 220ms ease;
+}
+
+.cast-link:hover .cast-preview {
+  transform: scale(1.01);
+}
+
+.sl-markdown-content > h1:first-child {
+  max-width: 19ch;
+  font-size: clamp(2.3rem, 6vw, 4.5rem);
+  line-height: 0.98;
+  letter-spacing: -0.05em;
+}
+
+@media (max-width: 60rem) {
+  .graph-heading {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .graph-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .graph-arrow {
+    transform: rotate(90deg);
+    justify-self: center;
+  }
+
+  .graph-node {
+    min-height: 7rem;
+  }
+}

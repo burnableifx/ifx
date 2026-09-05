@@ -1,0 +1,12 @@
+[package]
+name = "ifx-lab-05"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+anyhow = "1"
+ifx-program = { path = "../../crates/ifx-program", default-features = false, features = ["host"] }
+serde_json = "1"

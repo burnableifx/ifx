@@ -1,0 +1,7 @@
+name = "lab09"
+file = "Cargo.toml"
+
+[config]
+base = "/tmp/ifx-lab/09"
+port = 8879
+release = "2026.08"

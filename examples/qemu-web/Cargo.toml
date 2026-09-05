@@ -1,0 +1,10 @@
+[package]
+name = "ifx-example-qemu-web"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+ifx-program = { path = "../../crates/ifx-program", default-features = false, features = ["host", "qemu"] }

@@ -1,0 +1,10 @@
+[repo-guard]
+	remote = origin
+	trunk = main
+	delivery = trunk
+	check = CARGO_NET_OFFLINE=true cargo fmt --all --check
+	check = CARGO_NET_OFFLINE=true cargo clippy --all-targets -- -D warnings
+	check = CARGO_NET_OFFLINE=true cargo test --workspace --all-targets
+	check = CARGO_NET_OFFLINE=true cargo run -p ifx-gen -- --check
+	check = CARGO_NET_OFFLINE=true cargo run -p ifx-labs -- docs
+	check = node --test website/scripts/sync-content.test.mjs
