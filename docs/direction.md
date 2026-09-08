@@ -5,6 +5,15 @@ describes the system as it is; nothing here changes current behaviour. The notes
 architecture discovery for burnable.dev (2026-09-03), the first external consumer of IFX,
 and are kept in IFX terms so they stay useful as general infrastructure primitives.
 
+**Managed Burnable update (2026-09-07):** the hosted full-Program boundary, shared
+local/hosted executor binary, optional internal tenancy and broad provider protocol
+below are superseded for managed Burnable by the
+[provider-only design](brokering.md#planned-managed-provider-boundary). `burn`
+will execute IFX/host/SSH locally; managed IFXD will accept typed cloud operations
+with mandatory server authorization, funds and leases. That runtime is unbuilt.
+The remaining execution-split/plugin notes describe the earlier general
+local/operator executor roadmap, not requirements for the managed endpoint.
+
 ## Driving requirements
 
 burnable.dev provisions infrastructure that carries an explicit destruction condition and
@@ -35,10 +44,13 @@ the provider allows it (Linode tags; a per-guest metadata file for QEMU). A reap
 loop over provider credentials: list everything carrying a lease marker, delete anything
 past its deadline. Extension rewrites the marker as part of the lease update.
 
-Two-writer safety is a delete-idempotency rule: every handler treats "already gone" on
-delete as success. The reaper also catches resources the executor lost track of, which is
-orphan detection for free. The trade-off is that the deadline is legible to anyone holding
-the provider credential; that is acceptable.
+Delete idempotency is necessary but does not resolve extension/cleanup races.
+Managed cleanup needs durable inventory, lease generations and claims. Define
+store/marker write ordering before acknowledging extensions; stale markers must
+not authorize deletion of an acknowledged live lease. Marker-only recovery after
+store loss requires proof that no newer acknowledged lease exists. Unmarkable
+resources require surviving inventory or verified parent cascade deletion. Provider
+outages can still delay destruction. Markers are visible to provider credential holders.
 
 ## Execution split
 

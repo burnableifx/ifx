@@ -1,5 +1,36 @@
 # Brokered daemon calls
 
+**Current implementation:** this is an operator-configured whole-stack delegation
+API. It is not the planned managed provider boundary described below.
+
+## Planned managed provider boundary
+
+Rust `burn` will compile and execute the IFX graph locally. Host functions, files,
+commands, checks and SSH use the customer machine's local runtime and keys. Local
+cloud handlers will proxy typed resource operations to managed IFXD.
+
+Managed IFXD will hold provider credentials, validate account/stack/resource
+ownership, funds and leases, and invoke API-only adapters (Linode first). Its
+build must exclude the compiler, executor, host providers and SSH transports. It
+will accept no full Program, source, connection object, command, arbitrary URL or
+provider plugin. Responses contain safe resource/address facts; the local adapter
+constructs SSH connections. Initial cloud scope excludes startup scripts/user
+data and console commands; authorized SSH public keys are allowed input data.
+
+Cloud inventory, idempotent operation receipts and leases remain authoritative
+on the service. An independent provider-only reaper must continue cleanup after
+the customer disconnects. The website will use that same authority for cloud
+allocation and teardown; host setup remains a local `burn` action.
+
+This is target design, not an available mode or protocol. Required work is ordered:
+transport-free typed contract; Linode API-only extraction; managed authority and
+durable operations; local IFX CLI integration; independent cleanup; website/live
+integration. Exact new routes and wire types are not yet defined. Existing calls
+and tokens below retain their current meaning. Credential custody does not mean
+the managed daemon is unable to read its provider key.
+
+## Existing operator broker
+
 An IFXD broker holds an upstream credential and performs explicitly granted calls
 for a client daemon or agent. The client receives its own scoped token, never the
 upstream token. This is a separate mode: the broker cannot compile or execute local
