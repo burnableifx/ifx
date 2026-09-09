@@ -1,0 +1,32 @@
+// Compiles today. Open machine.ifx alongside this file for LSP module analysis.
+// Similar to reusing a Terraform module or Pulumi component for several environments.
+import machine from "./machine.ifx";
+
+input prefix: String = "example";
+input environments: Map[String] = {
+    development: "us-east",
+    staging: "us-east",
+    production: "us-west",
+};
+input monitoring: Bool = true;
+
+for environment, region in environments {
+    // The map key supplies stable module identity, independently of this local symbol.
+    module app = machine(environment)
+        .label(prefix + "-" + environment)
+        .region(region);
+}
+
+// This known input changes the desired graph before anything executes.
+// Turning it off removes this declaration; a future apply integration would plan deletion.
+if monitoring {
+    resource metrics = linode.instance("monitoring")
+        .label(prefix + "-monitoring")
+        .region("us-east")
+        .type("g6-nanode-1")
+        .image("linode/debian12")
+        .configure("metrics", |host| {
+            host.package("prometheus").installed(true).ensure();
+            host.service("prometheus").running(true).ensure();
+        });
+}

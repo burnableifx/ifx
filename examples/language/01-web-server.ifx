@@ -1,0 +1,32 @@
+// Compiles today. Host configuration can be simulated; no real deployment occurs.
+// Demonstrates inputs, a fluent resource, ordered configuration and output references.
+input name: String = "hello-web";
+input region: String = "us-east";
+input message: String = "Hello from IFX";
+
+resource web = linode.instance("web")
+    .label(name)
+    .region(region)
+    .type("g6-nanode-1")
+    .image("linode/debian12")
+    .configure("nginx", |host| {
+        host.package("nginx").installed(true).ensure();
+        host.directory("/srv/hello").mode("0755").ensure();
+        host.file("/srv/hello/index.html")
+            .content("<h1>" + message + "</h1>\n")
+            .mode("0644")
+            .ensure();
+        host.directory("/etc/nginx/conf.d").ensure();
+        host.file("/etc/nginx/conf.d/hello.conf")
+            .content("server { listen 8080; root /srv/hello; }\n")
+            .ensure();
+        // Running state does not imply reloading an existing service after file edits.
+        // Example 05 explores explicit reload behavior; it is not implemented yet.
+        host.service("nginx")
+            .enabled(true)
+            .running(true)
+            .ensure();
+    });
+
+output address: String = web.ipv4;
+output url: String = "http://" + web.ipv4 + ":8080";

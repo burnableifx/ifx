@@ -8,6 +8,11 @@ execution.
 
 ## Try it
 
+The [numbered infrastructure examples](../examples/language/README.md) show single
+servers, reusable environments, a Linode application stack, AWS networking and
+application lifecycle configuration. Each distinguishes implemented behavior from
+proposed resource or host APIs.
+
 From the repository root:
 
 ```sh

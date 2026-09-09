@@ -1,0 +1,79 @@
+// DESIGN SKETCH: grammar is supported; provider resources/fields below are proposals.
+// Not accepted by today's catalog and not a deployable managed Burnable stack.
+// Demonstrates VPC + database + a keyed server pool + load balancer + DNS.
+input name: String = "storefront";
+input region: String = "us-east";
+input hostname: String = "shop.example.com";
+input nodes: Map[String] = { "web-a": "g6-standard-1", "web-b": "g6-standard-1" };
+
+resource network = linode.vpc("network")
+    .label(name)
+    .region(region);
+
+resource subnet = linode.subnet("application-subnet")
+    .vpc_id(network.id)
+    .cidr("10.42.0.0/24");
+
+resource database = linode.postgres("database")
+    .label(name + "-db")
+    .region(region)
+    .subnet_id(subnet.id)
+    .version("16")
+    .storage_gib(20)
+    .backups(true);
+
+resource frontend = linode.nodebalancer("frontend")
+    .label(name)
+    .region(region)
+    .subnet_id(subnet.id);
+
+resource listener = linode.nodebalancer_config("http")
+    .nodebalancer_id(frontend.id)
+    .port(80)
+    .protocol("http")
+    .health_check({ path: "/health", interval_seconds: 15, healthy_threshold: 2 });
+
+for key, plan in nodes {
+    resource app = linode.instance(key)
+        .label(name + "-" + key)
+        .region(region)
+        .type(plan)
+        .image("linode/debian12")
+        .subnet_id(subnet.id)
+        .configure("application", |host| {
+            // A hypothetical application package supplies the service and its executable.
+            host.package("example-storefront").installed(true).ensure();
+            host.directory("/etc/storefront").ensure();
+            host.file("/etc/storefront/database.conf")
+                .content("host=" + database.hostname + "\nport=5432\n")
+                .mode("0640")
+                .ensure();
+            host.service("storefront").enabled(true).running(true).ensure();
+        });
+
+    // Separate backend resources let a loop wire each VM into the shared listener.
+    // No mutable list of resource handles or new collection syntax is needed.
+    resource backend = linode.nodebalancer_node(key)
+        .config_id(listener.id)
+        .address(app.private_ipv4)
+        .port(8080)
+        .weight(100);
+}
+
+resource firewall = linode.firewall("frontend-firewall")
+    .nodebalancer_id(frontend.id)
+    .inbound_policy("drop")
+    .inbound([
+        { protocol: "tcp", ports: "80", sources: ["0.0.0.0/0", "::/0"] },
+    ]);
+
+resource dns = linode.dns_record("public-name")
+    .zone("example.com")
+    .name(hostname)
+    .type("A")
+    .value(frontend.ipv4)
+    .ttl(300);
+
+// Database credentials and their delivery are a separate, still-undesigned contract.
+output url: String = "http://" + hostname;
+output database_host: String = database.hostname;

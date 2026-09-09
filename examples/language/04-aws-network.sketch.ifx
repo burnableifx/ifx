@@ -1,0 +1,70 @@
+// DESIGN SKETCH: AWS resource constructors, fields and outputs are proposed IFX APIs.
+// depends_on([resource, ...]) is also a proposed builder method for explicit ordering.
+// Demonstrates a common VPC, public/private subnet and managed egress arrangement.
+// No provider plugin or API calls run when this file is opened.
+input name: String = "application";
+input region: String = "us-east-1";
+
+resource network = aws.vpc("network")
+    .region(region)
+    .cidr("10.20.0.0/16")
+    .dns_support(true)
+    .tags({ Name: name });
+
+resource public = aws.subnet("public-a")
+    .vpc_id(network.id)
+    .availability_zone(region + "a")
+    .cidr("10.20.0.0/24")
+    .public_ip_on_launch(true);
+
+resource gateway = aws.internet_gateway("internet")
+    .vpc_id(network.id);
+
+resource internet_routes = aws.route_table("public-routes")
+    .vpc_id(network.id)
+    .routes([{ destination: "0.0.0.0/0", gateway_id: gateway.id }]);
+
+resource public_routes = aws.route_table_association("public-a")
+    .subnet_id(public.id)
+    .route_table_id(internet_routes.id);
+
+resource egress_address = aws.elastic_ip("egress-address")
+    .region(region)
+    .domain("vpc");
+
+resource egress = aws.nat_gateway("egress")
+    .subnet_id(public.id)
+    .allocation_id(egress_address.id)
+    .depends_on([gateway, public_routes]);
+
+resource private_routes = aws.route_table("private-routes")
+    .vpc_id(network.id)
+    .routes([{ destination: "0.0.0.0/0", nat_gateway_id: egress.id }]);
+
+let private_subnets = {
+    "a": "10.20.10.0/24",
+    "b": "10.20.20.0/24",
+};
+
+for zone, cidr in private_subnets {
+    resource subnet = aws.subnet("private-" + zone)
+        .vpc_id(network.id)
+        .availability_zone(region + zone)
+        .cidr(cidr)
+        .public_ip_on_launch(false);
+
+    resource association = aws.route_table_association("private-" + zone)
+        .subnet_id(subnet.id)
+        .route_table_id(private_routes.id);
+}
+
+// A service endpoint sends S3 traffic through a provider-managed route.
+resource storage_access = aws.vpc_endpoint("s3")
+    .vpc_id(network.id)
+    .service_name("com.amazonaws." + region + ".s3")
+    .type("gateway")
+    .route_table_ids([private_routes.id]);
+
+// This compact example shares one NAT gateway; per-zone egress is a different design.
+output network_id: String = network.id;
+output egress_ip: String = egress_address.public_ip;

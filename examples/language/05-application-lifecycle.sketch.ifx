@@ -1,0 +1,62 @@
+// DESIGN SKETCH: resource declaration and policy syntax exist today.
+// Proposed host APIs: command(argv).working_directory(path).run(), service(name).reload().
+// Proposed run() contract: wait for success; a nonzero exit fails the current body.
+// Commands and reloads would execute through the LOCAL runtime, never managed IFXD.
+input revision: String = "release-2026-09";
+input schema_revision: String = "schema-3";
+input message: String = "Welcome";
+
+resource app = linode.instance("application")
+    .label("example-application")
+    .region("us-east")
+    .type("g6-nanode-1")
+    .image("linode/debian12")
+    .configure("application", |host| {
+        // Ordinary desired-state operations converge on every apply.
+        host.package("example-application").installed(true).ensure();
+        for path in ["/srv/application", "/etc/application"] {
+            host.directory(path).mode("0755").ensure();
+        }
+
+        // Initialize target-local data once for this action key and target incarnation.
+        // A partial/uncertain outcome still requires reconciliation before replay.
+        host.once("initialize-data", || {
+            host.command(["example-application", "initialize", "--data", "/srv/application"])
+                .working_directory("/srv/application")
+                .run();
+        });
+
+        host.file("/etc/application/settings.conf")
+            .content("revision=" + revision + "\nmessage=" + message + "\n")
+            .mode("0640")
+            .ensure();
+
+        host.on_change("migrate-schema", schema_revision, || {
+            host.command(["example-application", "migrate", "--schema", schema_revision])
+                .working_directory("/srv/application")
+                .run();
+        });
+
+        host.service("example-application")
+            .enabled(true)
+            .running(true)
+            .ensure();
+
+        // Explicit watched inputs: unrelated edits do not request a reload.
+        host.on_change("reload-settings", [revision, message], || {
+            host.service("example-application").reload();
+        });
+
+        // An observation is evaluated here, after preceding operations finish.
+        if host.exists("/srv/application/cache") {
+            host.command(["example-application", "warm-cache"])
+                .working_directory("/srv/application")
+                .run();
+        }
+
+        host.always("verify-health", || {
+            host.command(["example-application", "healthcheck"]).run();
+        });
+    });
+
+output url: String = "http://" + app.ipv4;
