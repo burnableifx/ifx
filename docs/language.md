@@ -6,10 +6,11 @@ server. Configuration runs against an in-memory host only. Existing Rust stacks
 and IFXD execution are unchanged; this is not yet wired into `burn` or real host
 execution.
 
-The [function/struct language proposal](language-next.md) refines this surface with
+The [edition 0.2 authoring MVP](language-next.md) extends this surface with
 ordinary `let` bindings, typed parameters, `impl`/`new`, explicit returns and
 `.key(...)` identity. Its [examples](../examples/language/proposal/README.md) are
-design material and do not run on this implementation.
+executable when selected by `[language] edition = "0.2-draft"` in `Ifx.toml`.
+This page documents the retained legacy edition; use the linked guide for new authoring.
 
 ## Try it
 

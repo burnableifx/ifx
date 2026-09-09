@@ -36,6 +36,7 @@ pub struct Expr {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ExprKind {
+    Record(Name, Vec<(Name, Expr)>),
     Literal(Value),
     Name(Name),
     List(Vec<Expr>),
@@ -54,6 +55,17 @@ pub struct Stmt {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum StmtKind {
+    Struct {
+        public: bool,
+        name: Name,
+        fields: Vec<Field>,
+    },
+    Function(Function),
+    Impl {
+        name: Name,
+        functions: Vec<Function>,
+    },
+    Return(Option<Expr>),
     Use {
         name: Name,
         path: String,
@@ -80,6 +92,22 @@ pub enum StmtKind {
         no: Vec<Stmt>,
     },
     Expr(Expr),
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Field {
+    pub public: bool,
+    pub name: Name,
+    pub ty: String,
+    pub default: Option<Expr>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Function {
+    pub public: bool,
+    pub name: Name,
+    pub parameters: Vec<Field>,
+    pub result: String,
+    pub body: Vec<Stmt>,
+    pub span: Span,
 }
 #[derive(Clone, Debug)]
 pub struct Token {
@@ -108,6 +136,7 @@ pub fn parse(source: &str) -> Parsed {
         tokens: &tokens,
         at: 0,
         depth: 0,
+        records: true,
         diagnostics: Vec::new(),
     };
     let statements = p.block(false);
@@ -178,7 +207,9 @@ fn lex(s: &str) -> (Vec<Token>, Vec<Diagnostic>) {
             }
         } else {
             i += c.len_utf8();
-            if matches!(c, '=' | '!' | '<' | '>') && s.as_bytes().get(i) == Some(&b'=') {
+            if (matches!(c, '=' | '!' | '<' | '>') && s.as_bytes().get(i) == Some(&b'='))
+                || (c == '-' && s.as_bytes().get(i) == Some(&b'>'))
+            {
                 i += 1;
             }
         }
@@ -207,6 +238,7 @@ struct Parser<'a> {
     tokens: &'a [Token],
     at: usize,
     depth: usize,
+    records: bool,
     diagnostics: Vec<Diagnostic>,
 }
 type Result<T> = std::result::Result<T, Diagnostic>;
@@ -274,7 +306,18 @@ impl Parser<'_> {
                         && !self.is(";")
                         && !matches!(
                             self.token().text.as_str(),
-                            "let" | "resource" | "input" | "output" | "if" | "for" | "use"
+                            "let"
+                                | "resource"
+                                | "input"
+                                | "output"
+                                | "if"
+                                | "for"
+                                | "use"
+                                | "pub"
+                                | "fn"
+                                | "struct"
+                                | "impl"
+                                | "return"
                         )
                     {
                         self.take();
@@ -302,7 +345,48 @@ impl Parser<'_> {
     }
     fn statement(&mut self) -> Result<Stmt> {
         let start = self.token().span.start;
+        let public = self.eat("pub");
+        if public && !matches!(self.token().text.as_str(), "fn" | "struct") {
+            return Err(Diagnostic::new(
+                self.token().span,
+                "pub requires fn or struct",
+            ));
+        }
         let kind = match self.token().text.as_str() {
+            "struct" => {
+                self.take();
+                let name = self.name()?;
+                self.need("{")?;
+                let fields = self.fields("}", true)?;
+                StmtKind::Struct {
+                    public,
+                    name,
+                    fields,
+                }
+            }
+            "fn" => StmtKind::Function(self.function(public)?),
+            "impl" => {
+                self.take();
+                let name = self.path_name()?;
+                self.need("{")?;
+                let mut functions = Vec::new();
+                while !self.is("}") && !self.is("") {
+                    let public = self.eat("pub");
+                    functions.push(self.function(public)?);
+                }
+                self.need("}")?;
+                StmtKind::Impl { name, functions }
+            }
+            "return" => {
+                self.take();
+                let value = if self.is(";") {
+                    None
+                } else {
+                    Some(self.expr(0)?)
+                };
+                self.need(";")?;
+                StmtKind::Return(value)
+            }
             "use" => {
                 self.take();
                 let mut name = self.name()?;
@@ -365,7 +449,7 @@ impl Parser<'_> {
                     None
                 };
                 self.need("in")?;
-                let collection = self.expr(0)?;
+                let collection = self.header_expr()?;
                 let body = self.body()?;
                 StmtKind::For {
                     key,
@@ -376,7 +460,7 @@ impl Parser<'_> {
             }
             "if" => {
                 self.take();
-                let condition = self.expr(0)?;
+                let condition = self.header_expr()?;
                 let yes = self.body()?;
                 let no = if self.eat("else") {
                     self.body()?
@@ -399,8 +483,86 @@ impl Parser<'_> {
             kind,
         })
     }
+    fn header_expr(&mut self) -> Result<Expr> {
+        let records = std::mem::replace(&mut self.records, false);
+        let result = self.expr(0);
+        self.records = records;
+        result
+    }
+    fn path_name(&mut self) -> Result<Name> {
+        let mut name = self.name()?;
+        while self.eat(":") {
+            self.need(":")?;
+            match self.name() {
+                Ok(next) => {
+                    name.text.push_str("::");
+                    name.text.push_str(&next.text);
+                    name.span.end = next.span.end;
+                }
+                Err(error) => {
+                    self.diagnostics.push(error);
+                    name.text.push_str("::");
+                    break;
+                }
+            }
+        }
+        Ok(name)
+    }
+    fn fields(&mut self, end: &str, record: bool) -> Result<Vec<Field>> {
+        let mut fields = Vec::new();
+        while !self.is(end) && !self.is("") {
+            let public = record && self.eat("pub");
+            let name = self.name()?;
+            let ty = if !record && name.text == "self" {
+                "Self".into()
+            } else {
+                self.need(":")?;
+                self.type_name()?
+            };
+            let default = if self.eat("=") {
+                Some(self.expr(0)?)
+            } else {
+                None
+            };
+            fields.push(Field {
+                public,
+                name,
+                ty,
+                default,
+            });
+            if !self.eat(",") {
+                break;
+            }
+        }
+        self.need(end)?;
+        Ok(fields)
+    }
+    fn function(&mut self, public: bool) -> Result<Function> {
+        let start = self.token().span.start;
+        self.need("fn")?;
+        let name = self.name()?;
+        self.need("(")?;
+        let parameters = self.fields(")", false)?;
+        let result = if self.eat("->") {
+            self.type_name()?
+        } else {
+            "Unit".into()
+        };
+        let body = self.body()?;
+        Ok(Function {
+            public,
+            name,
+            parameters,
+            result,
+            body,
+            span: Span {
+                start,
+                end: self.tokens[self.at.saturating_sub(1)].span.end,
+            },
+        })
+    }
     fn type_name(&mut self) -> Result<String> {
-        let mut name = self.name()?.text;
+        let mut name = self.path_name()?.text;
         if self.eat("[") {
             self.depth += 1;
             if self.depth > MAX_DEPTH {
@@ -441,7 +603,10 @@ impl Parser<'_> {
             "false" => ExprKind::Literal(Value::Bool(false)),
             "!" => ExprKind::Not(Box::new(self.expr(4)?)),
             "(" => {
-                let e = self.expr(0)?;
+                let records = std::mem::replace(&mut self.records, true);
+                let result = self.expr(0);
+                self.records = records;
+                let e = result?;
                 self.need(")")?;
                 e.kind
             }
@@ -499,10 +664,23 @@ impl Parser<'_> {
                 }
             }
             s if s.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_') => {
-                ExprKind::Name(Name {
-                    text: t.text,
-                    span: t.span,
-                })
+                self.at = self.at.saturating_sub(1);
+                let name = self.path_name()?;
+                if self.records && self.eat("{") {
+                    let mut fields = Vec::new();
+                    while !self.is("}") && !self.is("") {
+                        let field = self.name()?;
+                        self.need(":")?;
+                        fields.push((field, self.expr(0)?));
+                        if !self.eat(",") {
+                            break;
+                        }
+                    }
+                    self.need("}")?;
+                    ExprKind::Record(name, fields)
+                } else {
+                    ExprKind::Name(name)
+                }
             }
             _ => return Err(Diagnostic::new(t.span, "expected expression")),
         };

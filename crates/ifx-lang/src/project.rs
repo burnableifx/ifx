@@ -30,9 +30,16 @@ fn invalid(message: impl Into<String>) -> Error {
     Error::Invalid(message.into())
 }
 
+#[derive(Default, PartialEq, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Language {
+    pub edition: String,
+}
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Manifest {
+    #[serde(default)]
+    pub language: Language,
     pub package: Package,
     #[serde(default)]
     pub modules: BTreeMap<String, String>,
@@ -73,7 +80,7 @@ fn identifier(s: &str) -> bool {
         .next()
         .is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
         && chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
-        && !matches!(s, "crate" | "self" | "super" | "linode" | "memory")
+        && !matches!(s, "crate" | "self" | "super" | "linode" | "memory" | "ifx")
 }
 fn relative(s: &str) -> bool {
     !s.contains('\\')
@@ -89,6 +96,11 @@ pub fn parse_manifest(text: &str) -> Result<Manifest> {
         return Err(invalid("manifest exceeds 32 KiB"));
     }
     let manifest: Manifest = toml::from_str(text)?;
+    if !manifest.language.edition.is_empty()
+        && manifest.language.edition != crate::authoring::EDITION
+    {
+        return Err(invalid("unsupported language edition"));
+    }
     if !identifier(&manifest.package.name) || manifest.package.version.is_empty() {
         return Err(invalid(
             "package requires an identifier name and nonempty version",
@@ -213,14 +225,44 @@ pub fn open_root(path: &Path) -> Result<File> {
 }
 #[derive(Default)]
 pub struct Snapshot {
+    pub edition: String,
     pub entry: Option<String>,
     pub sources: BTreeMap<String, String>,
     pub imports: Imports,
     pub paths: BTreeMap<String, PathBuf>,
 }
 impl Snapshot {
+    pub fn check(&self, entry: &str) -> Analysis {
+        let mut analysis = if self.edition == crate::authoring::EDITION {
+            crate::authoring::check(entry, &self.sources, &self.imports)
+        } else {
+            language::analyze_project(entry, &self.sources, &self.imports)
+        };
+        self.resolve_navigation(&mut analysis);
+        analysis
+    }
+    fn resolve_navigation(&self, analysis: &mut Analysis) {
+        for navigation in &mut analysis.navigation {
+            if let Some(path) = self.paths.get(&navigation.source) {
+                navigation.source = path.to_string_lossy().into_owned();
+            }
+        }
+    }
     pub fn analyze(&self, entry: &str) -> Analysis {
-        language::analyze_project(entry, &self.sources, &self.imports)
+        self.analyze_with_inputs(entry, &BTreeMap::new())
+    }
+    pub fn analyze_with_inputs(
+        &self,
+        entry: &str,
+        inputs: &BTreeMap<String, serde_json::Value>,
+    ) -> Analysis {
+        let mut analysis = if self.edition == crate::authoring::EDITION {
+            crate::authoring::analyze(entry, &self.sources, &self.imports, inputs)
+        } else {
+            language::analyze_project(entry, &self.sources, &self.imports)
+        };
+        self.resolve_navigation(&mut analysis);
+        analysis
     }
 }
 /// Load a bounded package snapshot; overlays are already-open editor buffers keyed by absolute path.
@@ -236,6 +278,7 @@ fn load_root(
 ) -> Result<Snapshot> {
     let manifest = parse_manifest(&read_at(&root, "Ifx.toml")?)?;
     let mut snapshot = Snapshot {
+        edition: manifest.language.edition.clone(),
         entry: manifest
             .package
             .entry
@@ -282,6 +325,9 @@ fn load_root(
         };
         let text = read_at(&root, &format!("{prefix}Ifx.toml"))?;
         let child = parse_manifest(&text)?;
+        if child.language != root_manifest.language {
+            return Err(invalid("dependency language edition differs from consumer"));
+        }
         if !child.dependencies.is_empty() {
             return Err(invalid(
                 "MVP dependency packages must be self-contained; nested dependencies are not supported yet",

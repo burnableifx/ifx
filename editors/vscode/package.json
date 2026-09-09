@@ -39,7 +39,14 @@
           "description": "Trusted local path to the Rust ifx-lang binary. Reload the window after changing it."
         }
       }
-    }
+    },
+    "grammars": [
+      {
+        "language": "ifx",
+        "scopeName": "source.ifx",
+        "path": "./syntaxes/ifx.tmLanguage.json"
+      }
+    ]
   },
   "capabilities": {
     "untrustedWorkspaces": {

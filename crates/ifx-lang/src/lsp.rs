@@ -65,7 +65,8 @@ impl Server {
             return reply(json!({"capabilities":{
                 "positionEncoding":"utf-16", "textDocumentSync":{"openClose":true,"change":1,"save":true},
                 "completionProvider":{"triggerCharacters":[".",":"]},"hoverProvider":true,"definitionProvider":true,
-                "documentSymbolProvider":true,"documentFormattingProvider":true
+                "documentSymbolProvider":true,"documentFormattingProvider":true,
+                "semanticTokensProvider":{"legend":{"tokenTypes":["keyword","type","function","variable","property","string","number"],"tokenModifiers":[]},"full":true}
             },"serverInfo":{"name":"ifx-lang","version":env!("CARGO_PKG_VERSION")}}));
         }
         if !self.initialized {
@@ -186,16 +187,20 @@ impl Server {
             | "textDocument/hover"
             | "textDocument/definition"
             | "textDocument/documentSymbol"
-            | "textDocument/formatting" => {
+            | "textDocument/formatting"
+            | "textDocument/semanticTokens/full" => {
                 let uri = params["textDocument"]["uri"].as_str().unwrap_or("");
                 let Some(doc) = self.documents.get(uri) else {
                     return reply(Value::Null);
                 };
                 let offset = offset(&doc.text, &params["position"]);
                 match method {
+                    "textDocument/semanticTokens/full" => reply(json!({"data":semantic_tokens(&doc.text)})),
                     "textDocument/completion" => {
                         let prefix = &doc.text[..offset];
                         let dot = prefix.rfind('.').filter(|&n| prefix[n+1..].chars().all(|c| c.is_ascii_alphanumeric() || c == '_'));
+                        let associated = prefix.rfind("::").filter(|&n| prefix[n+2..].chars().all(|c| c.is_ascii_alphanumeric() || c == '_'));
+                        let dot = dot.into_iter().chain(associated).max();
                         let line_start = prefix.rfind('\n').map_or(0, |i| i + 1);
                         let line = prefix[line_start..].trim_start();
                         let use_prefix = line.strip_prefix("use ").map(str::trim_start);
@@ -206,7 +211,7 @@ impl Server {
                         } else if let Some(dot) = dot {
                             doc.analysis.hints.iter().filter(|h| h.span.end <= dot && doc.text[h.span.end..dot].trim().is_empty()).max_by_key(|h| h.span.end-h.span.start).map(|h| h.items.iter().map(|c| json!({"label":c.label,"kind":2,"detail":c.detail})).collect()).unwrap_or_default()
                         } else {
-                            let mut items: Vec<_> = ["use", "module", "resource", "let", "input", "output", "for", "if", "linode", "memory"].iter().map(|s| json!({"label":s,"kind":14})).collect();
+                            let mut items: Vec<_> = ["use", "pub", "struct", "impl", "fn", "return", "let", "for", "if", "else", "Self", "module", "resource", "input", "output", "linode", "memory"].iter().map(|s| json!({"label":s,"kind":14})).collect();
                             items.extend(doc.analysis.symbols.iter().filter(|s| s.span.start <= offset && s.scope.start <= offset && offset <= s.scope.end).map(|s| json!({"label":s.name,"kind":6,"detail":s.detail}))); items
                         };
                         reply(json!({"isIncomplete":false,"items":items}))
@@ -215,11 +220,16 @@ impl Server {
                         let occurrence = doc.analysis.occurrences.iter().find(|o| o.span.start <= offset && offset < o.span.end);
                         let symbol = doc.analysis.symbols.iter().find(|s| s.span.start <= offset && offset < s.span.end);
                         if method.ends_with("definition") {
+                            if let Some(n) = doc.analysis.navigation.iter().find(|n| n.span.start <= offset && offset < n.span.end) {
+                                return reply(json!({"uri":file_uri(&n.source),"range":{"start":{"line":n.start.0,"character":n.start.1},"end":{"line":n.end.0,"character":n.end.1}}}));
+                            }
                             let span = occurrence.and_then(|o| o.definition).or_else(|| symbol.map(|s| s.span));
                             reply(span.map_or(Value::Null, |s| json!({"uri":uri,"range":range(&doc.text,s)})))
                         } else {
                             let text = occurrence.map(|o| (o.span, &o.detail)).or_else(|| symbol.map(|s| (s.span,&s.detail)));
-                            reply(text.map_or(Value::Null, |(s,t)| json!({"contents":{"kind":"plaintext","value":t},"range":range(&doc.text,s)})))
+                            if let Some((s,t)) = text { return reply(json!({"contents":{"kind":"plaintext","value":t},"range":range(&doc.text,s)})); }
+                            let hint = doc.analysis.hints.iter().filter(|h| h.span.start <= offset && offset <= h.span.end).min_by_key(|h|h.span.end-h.span.start);
+                            reply(hint.map_or(Value::Null, |h|json!({"contents":{"kind":"plaintext","value":h.items.iter().map(|i|format!("{}: {}",i.label,i.detail)).collect::<Vec<_>>().join("\n")},"range":range(&doc.text,h.span)})))
                         }
                     },
                     "textDocument/documentSymbol" => reply(json!(doc.analysis.symbols.iter().map(|s| json!({"name":s.name,"detail":s.detail,"kind":13,"range":range(&doc.text,s.span),"selectionRange":range(&doc.text,s.span)})).collect::<Vec<_>>())),
@@ -233,6 +243,101 @@ impl Server {
             _ => error(-32601, "method not supported"),
         }
     }
+}
+fn file_uri(path: &str) -> String {
+    let mut uri = String::from("file://");
+    for b in path.bytes() {
+        if b.is_ascii_alphanumeric() || b"/-._~".contains(&b) {
+            uri.push(char::from(b));
+        } else {
+            use std::fmt::Write;
+            write!(uri, "%{b:02X}").expect("String write");
+        }
+    }
+    uri
+}
+fn semantic_tokens(source: &str) -> Vec<u32> {
+    let parsed = crate::syntax::parse(source);
+    let mut data = Vec::new();
+    let mut previous = (0, 0);
+    let (mut cursor, mut line, mut col) = (0, 0u32, 0u32);
+    for (i, token) in parsed.tokens.iter().enumerate() {
+        let text = token.text.as_str();
+        let before = i.checked_sub(1).map(|i| parsed.tokens[i].text.as_str());
+        let after = parsed.tokens.get(i + 1).map(|t| t.text.as_str());
+        let kind = if matches!(
+            text,
+            "use"
+                | "as"
+                | "pub"
+                | "struct"
+                | "impl"
+                | "fn"
+                | "let"
+                | "return"
+                | "for"
+                | "in"
+                | "if"
+                | "else"
+                | "true"
+                | "false"
+                | "resource"
+                | "module"
+                | "input"
+                | "output"
+        ) {
+            0
+        } else if text.starts_with('"') {
+            5
+        } else if text.starts_with(|c: char| c.is_ascii_digit())
+            || text.starts_with('-')
+                && text.len() > 1
+                && text[1..].starts_with(|c: char| c.is_ascii_digit())
+        {
+            6
+        } else if text.starts_with(|c: char| c.is_ascii_uppercase())
+            || matches!(before, Some("struct" | "impl"))
+        {
+            1
+        } else if before == Some("fn") || after == Some("(") {
+            2
+        } else if before == Some(".") {
+            4
+        } else if text.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_') {
+            3
+        } else {
+            continue;
+        };
+        let mut byte = token.span.start;
+        for part in source[token.span.start..token.span.end].split_inclusive('\n') {
+            let length = part.trim_end_matches(['\n', '\r']).encode_utf16().count() as u32;
+            if length > 0 {
+                for c in source[cursor..byte].chars() {
+                    if c == '\n' {
+                        line += 1;
+                        col = 0;
+                    } else {
+                        col += c.len_utf16() as u32;
+                    }
+                }
+                cursor = byte;
+                data.extend([
+                    line - previous.0,
+                    if line == previous.0 {
+                        col - previous.1
+                    } else {
+                        col
+                    },
+                    length,
+                    kind,
+                    0,
+                ]);
+                previous = (line, col);
+            }
+            byte += part.len();
+        }
+    }
+    data
 }
 /// Accept local absolute file URIs, including percent-encoded UTF-8. Never accept remote authorities.
 fn file_path(uri: &str) -> Option<PathBuf> {
@@ -287,7 +392,7 @@ fn analyze_document(uri: &str, sources: &BTreeMap<String, String>, roots: &[Path
             "file is not declared in Ifx.toml".into(),
         ));
     };
-    snapshot.analyze(entry)
+    snapshot.check(entry)
 }
 /// Conservative formatting for the first grammar: trim line ends, normalize final newline.
 /// No AST reprinting, which would discard comments and break incomplete buffers.

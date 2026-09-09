@@ -1,0 +1,50 @@
+{
+  "name": "IFX",
+  "scopeName": "source.ifx",
+  "patterns": [
+    {
+      "name": "comment.line.double-slash.ifx",
+      "begin": "//",
+      "end": "$"
+    },
+    {
+      "name": "string.quoted.double.ifx",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.ifx",
+          "match": "\\\\(?:[\"\\\\/bfnrt]|u[0-9A-Fa-f]{4})"
+        }
+      ]
+    },
+    {
+      "name": "keyword.control.ifx",
+      "match": "\\b(?:use|as|pub|struct|impl|fn|let|return|for|in|if|else|resource|module|input|output)\\b"
+    },
+    {
+      "name": "constant.language.ifx",
+      "match": "\\b(?:true|false)\\b"
+    },
+    {
+      "name": "constant.numeric.ifx",
+      "match": "(?<![\\w])-?\\b[0-9]+\\b"
+    },
+    {
+      "name": "entity.name.type.ifx",
+      "match": "\\b[A-Z][A-Za-z0-9_]*\\b"
+    },
+    {
+      "name": "entity.name.function.ifx",
+      "match": "\\b[a-z_][A-Za-z0-9_]*(?=\\s*\\()"
+    },
+    {
+      "name": "variable.other.property.ifx",
+      "match": "(?<=\\.)[a-z_][A-Za-z0-9_]*"
+    },
+    {
+      "name": "keyword.operator.ifx",
+      "match": "::|->|==|!=|[+=!|]"
+    }
+  ]
+}

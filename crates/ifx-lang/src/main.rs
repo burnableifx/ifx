@@ -15,6 +15,9 @@ use std::{collections::BTreeMap, io::Read, path::PathBuf};
 struct Cli {
     #[command(subcommand)]
     command: Command,
+    /// TOML values for edition 0.2 main parameters.
+    #[arg(long, global = true)]
+    inputs: Option<PathBuf>,
 }
 #[derive(Subcommand)]
 enum Command {
@@ -112,8 +115,35 @@ fn main() -> anyhow::Result<()> {
     } else {
         project::find_root(&root, None)
     };
+    let inputs: BTreeMap<String, serde_json::Value> = if let Some(path) = &cli.inputs {
+        let table: toml::Table = toml::from_str(&read(path)?).map_err(|e: toml::de::Error| {
+            anyhow::anyhow!(
+                "invalid input TOML at byte {}: {}",
+                e.span().map_or(0, |s| s.start),
+                e.message()
+            )
+        })?;
+        serde_json::from_value(serde_json::to_value(table)?)?
+    } else {
+        BTreeMap::new()
+    };
     let analysis = if let Some(root) = project_root {
         let snapshot = project::load(&root, &BTreeMap::new())?;
+        if manifest && snapshot.entry.is_none() && matches!(cli.command, Command::Check { .. }) {
+            anyhow::ensure!(inputs.is_empty(), "library checks do not take root inputs");
+            let id = snapshot
+                .sources
+                .keys()
+                .next()
+                .context("library has no declared source modules")?;
+            let a = snapshot.check(id);
+            for d in &a.diagnostics {
+                eprintln!("{}", d.message);
+            }
+            anyhow::ensure!(a.diagnostics.is_empty(), "language check failed");
+            println!("checked library definitions");
+            return Ok(());
+        }
         let selected = if manifest {
             let entry = snapshot
                 .entry
@@ -134,8 +164,16 @@ fn main() -> anyhow::Result<()> {
             .map(|(id, _)| id)
             .context("file is not declared in Ifx.toml")?;
         source = snapshot.sources[id].clone();
-        snapshot.analyze(id)
+        anyhow::ensure!(
+            inputs.is_empty() || snapshot.edition == ifx_lang::authoring::EDITION,
+            "--inputs requires edition 0.2"
+        );
+        snapshot.analyze_with_inputs(id, &inputs)
     } else {
+        anyhow::ensure!(
+            inputs.is_empty(),
+            "--inputs requires an edition 0.2 project"
+        );
         let mut sources = BTreeMap::from([(entry.to_string(), source.clone())]);
         load_modules(&root, entry, &mut sources)?;
         analyze_workspace(entry, &sources)
@@ -153,9 +191,13 @@ fn main() -> anyhow::Result<()> {
         }
         bail!("language check failed");
     }
+    if analysis.compilation.is_none() && matches!(cli.command, Command::Check { .. }) {
+        println!("checked library definitions");
+        return Ok(());
+    }
     let compilation = analysis
         .compilation
-        .context("valid analysis did not produce a compilation")?;
+        .context("compilation requires an entry file with fn main")?;
     match cli.command {
         Command::Check { .. } => println!(
             "checked {} resources, {} configurations",

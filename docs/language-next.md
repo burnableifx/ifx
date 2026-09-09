@@ -1,24 +1,42 @@
 # IFX language proposal: functions, structs and scoped construction
 
-Status: **design draft, 9 September 2026 — `ifx/0.2-draft`**. This is a specification
-for review and subsequent implementation, not a description of today's parser.
-The [current language guide](language.md) remains authoritative for executable
-syntax. The [proposal examples](../examples/language/proposal/README.md) deliberately
-use this draft and are not accepted by the current compiler or language server.
-No provider, host executor, grammar or LSP implementation changes accompany this draft.
+Status: **testable authoring MVP, 9 September 2026 — `ifx/0.2-draft`**.
+The Rust compiler and LSP now accept the [application, fleet, lifecycle and data
+examples](../examples/language/proposal/README.md). Select this edition explicitly
+in `Ifx.toml`; omitted editions retain the [legacy language](language.md).
 
-The user requested ordinary bindings, callable modules, struct-shaped interfaces,
-explicit returns, constructors and Rust-style imports, while preserving fluent
-builders and implicit declaration finalization. The rules below resolve gaps in
-the conversational sketches. In particular, `new()` is consistently a builder
-entry point, `.key(...)` supplies identity, and function parameters supply data.
-These refinements are recommendations for review, not already-approved behavior.
+Implemented: nominal structs, immutable bindings, pure positional functions and
+methods, fluent `new()` constructors, explicit returns, scoped graph keys,
+public item imports, TOML root inputs, schema-based provider lowering, constructor
+completion, cross-file navigation, and syntax/semantic highlighting. The same
+in-memory host engine evaluates attached configurations.
+
+This document specifies the language direction as well as the implemented core.
+The following remain **explicitly deferred**:
+
+- Calls to user helpers, struct literals and `return` inside configuration lambdas;
+  compute helper results before `.configure` and capture them. Host lambdas retain
+  the existing host statement subset. Collections of structs/handles cannot yet
+  be captured; scalar/primitive collection captures preserve typed references.
+- TOML construction of nominal structs, `--set`, a serialized public result-type
+  schema, and equality for nominal structs/collections containing them. TOML
+  currently supplies scalar and primitive collection parameters; outputs retain
+  encoded handles and deferred projections.
+- General provider type generation beyond the two schema-backed aliases
+  `ifx::linode::Instance` and `ifx::memory::Value`, signature-help, diagnostic
+  related locations, and availability/effect semantic-token modifiers. Current
+  completion gives fields/setters and signatures; highlighting classifies syntax.
+- Real hosts, durable journals, Burn CLI integration and managed admission.
+
+Calling conventions are fixed: ordinary functions are positional and pure;
+constructors are fluent and may compose infrastructure. Effect checking validates
+identity requirements without changing function call syntax.
 
 ## 1. The authoring model
 
 An IFX source file contains imports, structs, functions and `impl` blocks. Importing
-a file loads definitions; it never instantiates infrastructure. A reusable module
-is an exported function or type whose constructor composes resources. A project
+a file loads definitions; it never instantiates infrastructure. A reusable infrastructure module
+is an exported type whose constructor composes resources. Ordinary functions compute values. A project
 has one entry file with a `main` function. There are no executable file-level
 statements in this edition.
 
@@ -49,10 +67,10 @@ The four former declaration forms have ordinary language equivalents:
 |---|---|---|
 | `input region: String = ...;` | A typed function/constructor parameter | Caller-supplied data and defaults |
 | `resource web = ...;` | `let web = Instance::new()...;` | Declare a provider resource and bind its handle |
-| `module app = ...;` | `let app = Application::new()...;` or a graph-function builder | Expand a reusable component in a stable namespace |
+| `module app = ...;` | `let app = Application::new()...;` | Expand a reusable component in a stable namespace |
 | `output url: String = ...;` | Explicit `return` of a typed value | Expose selected values to callers |
 
-A module can return `Unit` and still declare resources. Returning a value never
+The entry can return `Unit`, and a graph constructor can return an empty struct while still declaring resources. Returning a value never
 causes provisioning, and not returning a resource never removes its declaration.
 The compiler must not eliminate declarations because their handles are unused.
 
@@ -135,20 +153,21 @@ The analyzer infers an effect from each body and its statically resolved callees
 | Effect | Allowed work | Call shape |
 |---|---|---|
 | Pure | Compute values, construct data, read existing handles as typed references | `label("production", "web")` |
-| Graph | Declare provider resources or invoke another graph function/constructor | `application().key("production").name("frontend")` |
+| Graph constructor | Declare provider resources or invoke another graph constructor | `Application::new().key("production").name("frontend")` |
 | Host | Observe/change a host through its supplied capability | Restricted to configuration/policy lambdas in this increment |
 
-An ordinary helper is pure unless it declares infrastructure, transitively. A
-graph function stays classified as Graph even when a known branch happens to
-produce no resources on a particular call. The LSP must display this effect and
-its required invocation form. Changing a public function from Pure to Graph is a
-breaking API change; a call must never silently gain infrastructure effects.
+Ordinary functions and read-only methods are always pure and use positional calls.
+They may read finalized resource handles but cannot construct infrastructure,
+directly or through a constructor. Only constructors and the selected `main` may
+build a graph. The checker infers whether a constructor builds infrastructure to
+validate `.key(...)`; inference never changes ordinary function call syntax.
+A constructor stays graph-building even when a known branch produces no resources.
+Constructor completion includes `.key` only when identity is required.
 
-Pure free functions accept positional arguments in declaration order; only trailing
-defaulted parameters may be omitted. Graph functions accept no positional arguments:
-the empty call creates a builder whose setters are the function's parameter names.
-Required parameters are checked at finalization. `.key(...)` is metadata, not a
-hidden first parameter. An identity-bearing call must always show it explicitly.
+Pure functions accept positional arguments in declaration order; only trailing
+defaulted parameters may be omitted. Constructor calls accept no positional
+arguments: the empty call creates a builder with named parameter setters. `.key`
+is explicit metadata, never a hidden first function parameter.
 
 `main` is the entry exception: the CLI supplies its parameters directly and invokes
 its body once inside the selected stack root. It needs no `.key(...)` and cannot
@@ -189,8 +208,7 @@ let app = Application::new().key("production").name("frontend");
 A graph constructor requires `.key(...)`; a pure constructor rejects it. Ordinary
 read-only instance methods such as `address(self) -> String` are pure, use normal
 positional calls, and may read fields. `self` is the first parameter and is supplied
-by the receiver. Static associated helpers other than `new` follow the same
-Pure/Graph call rules as free functions. Mutating or graph-declaring instance
+by the receiver. Static associated helpers other than `new` are pure and use positional calls. Mutating or graph-declaring instance
 methods and user-defined Host functions are deferred.
 
 A parameter cannot take a name reserved by its builder: `key`, or `configure` on
@@ -208,7 +226,7 @@ semicolon finalizes it once. The bound value is the completed constructor result
 or provider handle, never a reusable builder.
 
 Finalization validates required fields, duplicate setters, types and identity;
-then evaluates a user constructor/graph function or registers a provider resource
+then evaluates a user constructor or registers a provider resource
 in the in-memory graph. Failed expansion produces no executable compilation.
 Check and compile evaluate this graph-building logic but perform no host/provider
 operations. The entire graph must validate before an apply may start.
@@ -228,7 +246,7 @@ value. Calling `.region(...)` on a completed resource handle is an error; make a
 configuration struct or a reusable constructor when several declarations share
 settings. Duplicate setters are errors even when their values are equal.
 
-A graph-function/constructor key opens a namespace for declarations in its body.
+A graph constructor key opens a namespace for declarations in its body.
 A provider resource key names a leaf within the current namespace. Constructor
 names, local variable names, source paths, import aliases and return-field names
 are not identity components.
@@ -242,9 +260,11 @@ For the application example:
 | That constructor's `Instance::new().key("vm")` | `["production", "web", "vm"]` |
 
 The stack/account identity scopes this path externally. Resources also carry their
-canonical provider kind, such as `linode.instance`. Reuse the existing unambiguous
-namespace encoding when lowering to IFX URNs; do not concatenate user keys with a
-separator. Sibling graph invocations cannot reuse a namespace key. Resources
+canonical provider kind, such as `linode.instance`. Edition 0.2 encodes every full key path as a JSON String array in the existing
+IFX URN key slot, including a one-element root path. Thus a root key containing
+literal JSON cannot alias a nested path. For example `Value::new().key("worker")`
+lowers to `memory.value:["worker"]`. Legacy edition identity encoding is unchanged;
+there is no implicit state migration between editions. Sibling graph invocations cannot reuse a namespace key. Resources
 cannot duplicate the same provider kind and complete key path. Reusing a handle
 or returning it twice is not another invocation and does not reserve a new key.
 
@@ -257,9 +277,9 @@ There is no automatic state migration in this draft.
 ## 5. Provider resources and deferred values
 
 Provider types are generated from trusted Rust schemas. `use ifx::linode::Instance;`
-and `use ifx::memory::Value;` name proposed generated types corresponding to existing
+and `use ifx::memory::Value;` name schema-backed aliases corresponding to existing
 `linode.instance` and `memory.value` kinds. The `ifx` namespace is reserved and has
-no network resolution. The new PascalCase import/API is proposed; today's DSL uses
+no network resolution. Edition 0.2 uses these aliases; the legacy edition retains
 `linode.instance(...)` and `memory.value(...)`.
 
 Resource configuration and observed state should be struct-shaped in the catalog:
@@ -404,9 +424,8 @@ application = "application.ifx"
 shared = { path = "shared" }
 ```
 
-The proposed `[language]` table selects syntax and is separate from package version.
-It is **not accepted by today's manifest parser**. A future compiler must reject
-unsupported editions before graph evaluation. Omitting it retains legacy behavior
+The `[language]` table selects syntax and is separate from package version.
+The compiler rejects unsupported editions before graph evaluation. Omitting it retains legacy behavior
 for existing projects; edition 0.2 does not accept the old `input`, `output`,
 `resource`, `module` binding forms or `import ... from` syntax. Mixing source editions
 within a package or depending on another edition is rejected in the first increment;
@@ -431,28 +450,27 @@ authentication, SSH fetching and a registry remain separate increments.
 
 ## 9. Root parameters and externally visible results
 
-The root `main` parameters are the runtime-input interface. Proposed CLI syntax:
+The root `main` parameters are the runtime-input interface. Implemented CLI syntax:
 
 ```sh
-# DESIGN ONLY: --inputs and --set are not implemented today.
-ifx-lang compile Ifx.toml --inputs production.toml --set region=us-central
+ifx-lang compile Ifx.toml --inputs production.toml
 ```
 
 The parameter file is a TOML table whose keys exactly match root parameter names.
-Struct values use TOML tables; lists/maps are validated recursively. Scalar `--set
+The MVP accepts primitive lists/maps recursively; nominal struct inputs are deferred. Planned scalar `--set
 name=value` supports String/Int/Bool according to the declared parameter type;
 String values are literal after shell processing. Complex values use the TOML file,
 not an ad hoc expression parser. No parameter input is executable DSL.
 
-Precedence is parameter default < one input file < explicit `--set`. Duplicate CLI
+Current precedence is parameter default < one explicit input file. A future `--set` layer would override the file. Duplicate CLI
 keys, unknown keys, missing required parameters and invalid supplied values are
 errors even if a later layer would override them. Defaults are independently
 checked. The same resolved inputs feed check, compile and simulate; no ambient
 environment/file discovery supplies missing values. Resource handles and deferred
 values cannot be fabricated as external inputs.
 
-The root result is an explicit API value. Compilation carries its type and encoded
-reference projections alongside the complete graph and configurations. Root results
+The root result is an explicit API value. The target result contract will carry its type as well as encoded
+reference projections; the current envelope carries only values/projections alongside the complete graph and configurations. Root results
 may include handles/structs. A handle serializes as its canonical kind/URN reference,
 never as its provider credentials or local transport capability. Host/connection
 capabilities are not legal public result values in this edition. An apply consumer
@@ -506,9 +524,9 @@ Int literals include negative decimal values. The grammar deliberately has no Ru
 macros, arbitrary attributes, lifetimes, unsafe blocks, FFI or dynamic loading.
 `self` is valid only as the first parameter of an instance method; imports need at
 least a namespace/module and item. `configure` accepts one lambda parameter; policy
-lambdas accept none. A lambda has Unit result; `return` inside one may only be the
-final statement of its outer body, so early returns cannot skip action work and
-incorrectly mark a policy successful.
+lambdas accept none. A lambda has Unit result. The current host subset rejects `return` in lambdas;
+a future extension may permit only a final outer-body return, so early returns
+cannot skip action work and incorrectly mark a policy successful.
 
 Retain bounded parsing/evaluation: 256 KiB/source, 32 sources/1 MiB aggregate,
 24,000 tokens/source, nesting 48, 256 collection entries, 128 graph resources and
@@ -539,28 +557,27 @@ finalize a deployment against a provider or execute a host body.
 | Navigate an imported constructor or public field | Correct cross-file source location |
 | Edit an imported struct/function unsaved | Recheck affected consumers using the same workspace snapshot |
 
-Add native syntax highlighting for keywords, types, constructors, parameters,
-fields, literals and comments; semantic tokens should refine resolved symbols and
-known/deferred/effect information where useful. Today's adapter has neither an IFX
-TextMate grammar nor semantic tokens. Rust-colored Markdown is only an approximation.
-The proposed LSP features above, including cross-file navigation, are acceptance
-work rather than claims about current editor support.
+The VS Code adapter includes an IFX TextMate grammar; the server provides full
+semantic tokens for keywords, types, functions, variables, properties, strings
+and numbers. Comments are handled by TextMate. Known/deferred/effect modifiers
+and parameter-specific semantic classification remain future work. Cross-file
+navigation and incomplete constructor-chain completion are covered by protocol
+tests and a real Neovim session. A VS Code UI session remains unverified.
 
-Implement in vertical slices, retaining executable legacy examples throughout:
+The implementation follows these vertical slices, retaining executable legacy examples:
 
 1. Edition gate, structs, immutable bindings, pure functions/methods, explicit return
    checking and source navigation. Prove the values example without graph effects.
-2. Generated resource constructors and pure/graph effect classification; builder
+2. Generated resource constructors and constructor effect checking; builder
    finalization, `.key` validation and unchanged canonical resource graph lowering.
-3. User constructors/scoped functions, public cross-file items and manifest resolution.
+3. User constructors/scoped composition, public cross-file items and manifest resolution.
    Prove the nested application and environments examples plus CLI/LSP agreement.
 4. Typed root parameter files/overrides and explicit result envelopes; preserve
    deferred references and resource handles without exposing runtime capabilities.
 5. Carry configuration captures through the new frontend; prove policy behavior
    with the in-memory host and complete the authoring walkthrough in a real editor.
 
-Each slice includes its LSP surface, diagnostics and tests. A draft is not a release
-gate pass. Real hosts, durable journals, Burn CLI integration and managed admission
+Each slice includes its LSP surface, diagnostics and tests. The explicit deferrals above remain outside this MVP. Real hosts, durable journals, Burn CLI integration and managed admission
 remain separate product work.
 
 ### Required behavioral vectors
@@ -571,8 +588,8 @@ remain separate product work.
   duplicate scoped calls/resources fail even when bound results are unused.
 - Missing required/default-invalid parameters, duplicate setters, wrong/ private
   fields and unresolved public return types fail before graph emission.
-- Pure helpers/data constructors produce no resources; graph functions returning
-  Unit retain theirs. Storing/returning a pending builder and positional graph calls fail.
+- Pure helpers/data constructors produce no resources; graph constructors returning
+  empty structs retain theirs. Storing/returning a pending builder and positional constructor calls fail.
 - Imports do not instantiate resources. Cyclic imports/calls and work-budget overflow
   produce bounded diagnostics. Adding a deferred comparison never fabricates a value.
 - Nested constructor returns preserve reference type, projection and canonical URN;
@@ -589,12 +606,11 @@ remain separate product work.
 
 ## 12. Review points and explicit deferrals
 
-The draft chooses inferred Pure/Graph effects and a special fluent `new()` call
-convention to reconcile ordinary functions with stable infrastructure identity.
-These choices deserve user authoring feedback before implementation: adding an
-explicit effect annotation later would change the declaration syntax; supporting
-positional constructors would require an unambiguous separate invocation rule.
-The examples consistently use the rules chosen here rather than mixing alternatives.
+The September 9 refinement fixes calling conventions: ordinary functions are
+positional and pure; `new()` constructors are fluent and may compose infrastructure.
+Constructor effect checking controls whether `.key` is required without changing
+function call syntax. The `Fleet` example replaces the earlier free graph function.
+This narrows the first implementation while retaining the user-approved authoring path.
 
 Keep the first implementation focused on these constructs. Do not add a general
 Rust compiler, ownership system, macros, arbitrary closures, user generics, mutable

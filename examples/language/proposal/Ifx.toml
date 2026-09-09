@@ -1,7 +1,7 @@
 [language]
 edition = "0.2-draft"
 
-# Proposed edition selector; remaining manifest layout follows the current project format.
+# Edition selection is independent of the package version.
 [package]
 name = "language_proposal"
 version = "0.2.0"

@@ -1,4 +1,4 @@
-// PROPOSAL: ifx/0.2-draft. Not accepted by the current parser.
+// Executable authoring MVP: ifx/0.2-draft. Requires the accompanying Ifx.toml.
 use shared::web::WebServer;
 
 pub struct Environment {
@@ -7,18 +7,21 @@ pub struct Environment {
     pub enabled: Bool = true,
 }
 
-pub fn deploy_environments(environments: Map[Environment]) {
-    // String map keys, rather than list positions, provide stable identities.
-    for key, settings in environments {
-        if settings.enabled {
-            let server = WebServer::new()
-                .key(key)
-                .name(settings.name)
-                .region(settings.region);
+pub struct Fleet {}
+
+impl Fleet {
+    pub fn new(environments: Map[Environment]) -> Self {
+        for key, settings in environments {
+            if settings.enabled {
+                let server = WebServer::new()
+                    .key(key)
+                    .name(settings.name)
+                    .region(settings.region);
+            }
         }
+        // The empty result does not remove the resources declared above.
+        return Self {};
     }
-    // Unit return: declarations remain in the graph even with no returned handles.
-    return;
 }
 
 fn main() {
@@ -28,8 +31,7 @@ fn main() {
         "preview": Environment { name: "preview-web", enabled: false },
     };
 
-    // This function declares infrastructure, so it receives a scoped builder call.
-    deploy_environments()
+    Fleet::new()
         .key("fleet")
         .environments(environments);
 }

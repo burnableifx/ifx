@@ -1,4 +1,4 @@
-// PROPOSAL: ifx/0.2-draft. Not accepted by the current parser.
+// Executable authoring MVP: ifx/0.2-draft. Requires the accompanying Ifx.toml.
 // Existing in-memory host operations; no invented command or SSH execution API.
 use ifx::memory::Value;
 

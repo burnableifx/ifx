@@ -49,7 +49,7 @@ pub(crate) struct Atom {
     pub ty: FieldType,
 }
 impl Atom {
-    fn known(json: Value) -> Self {
+    pub(crate) fn known(json: Value) -> Self {
         let ty = match &json {
             Value::String(_) => FieldType::String,
             Value::Bool(_) => FieldType::Bool,
@@ -63,7 +63,7 @@ impl Atom {
         };
         Self { json, ty }
     }
-    fn concrete(&self) -> bool {
+    pub(crate) fn concrete(&self) -> bool {
         let mut refs = Vec::new();
         ifx_program::model::collect_refs(&self.json, &mut refs);
         refs.is_empty() && !contains_unknown(&self.json)
@@ -71,6 +71,9 @@ impl Atom {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) enum Val {
+    Record {
+        fields: BTreeMap<String, Val>,
+    },
     ModuleDefinition(String),
     ModuleBuilder {
         path: String,
@@ -128,7 +131,15 @@ pub struct Hint {
     pub items: Vec<Completion>,
 }
 #[derive(Default)]
+pub struct Navigation {
+    pub span: Span,
+    pub source: String,
+    pub start: (usize, usize),
+    pub end: (usize, usize),
+}
+#[derive(Default)]
 pub struct Analysis {
+    pub navigation: Vec<Navigation>,
     pub modules: Vec<String>,
     pub diagnostics: Vec<Diagnostic>,
     pub compilation: Option<Compilation>,
@@ -249,12 +260,12 @@ pub(crate) struct Evaluator<'a> {
     pub(crate) host: Option<&'a mut crate::simulator::Host>,
     pub(crate) identity: String,
     pub(crate) policy_depth: usize,
-    work: usize,
+    pub(crate) work: usize,
     scope: Span,
     sources: Option<&'a BTreeMap<String, String>>,
     imports: Option<&'a Imports>,
     path: String,
-    namespace: Vec<String>,
+    pub(crate) namespace: Vec<String>,
     module_depth: usize,
     module_inputs: BTreeMap<String, Atom>,
     module_outputs: BTreeMap<String, Atom>,
@@ -341,8 +352,17 @@ impl<'a> Evaluator<'a> {
         );
         Ok(())
     }
-    fn statement(&mut self, s: &Stmt, env: &mut Env) -> Result<()> {
+    pub(crate) fn statement(&mut self, s: &Stmt, env: &mut Env) -> Result<()> {
         match &s.kind {
+            StmtKind::Struct { .. }
+            | StmtKind::Impl { .. }
+            | StmtKind::Function(_)
+            | StmtKind::Return(_) => {
+                return Err(Diagnostic::new(
+                    s.span,
+                    "function/struct syntax requires edition 0.2",
+                ));
+            }
             StmtKind::Use { name, path } => {
                 if !self.identity.is_empty() || self.block_depth != 0 {
                     return Err(Diagnostic::new(
@@ -445,66 +465,13 @@ impl<'a> Evaluator<'a> {
                     let outputs = self.instantiate(&path, &key, inputs, value.span)?;
                     self.bind(env, name, Val::ModuleOutputs(outputs))?;
                 } else if category == "resource" {
-                    if self.output.program.resources.len() >= 128 {
-                        return Err(Diagnostic::new(s.span, "resource expansion limit exceeded"));
-                    }
                     let Val::Builder { decl, configs } = v else {
                         return Err(Diagnostic::new(
                             value.span,
                             "resource requires a resource builder",
                         ));
                     };
-                    let schema = self.schema(decl.type_name(), value.span)?;
-                    let mut decl = decl;
-                    schema.apply_defaults(&mut decl.inputs);
-                    if let Err(errors) = schema.validate(&decl.inputs) {
-                        return Err(Diagnostic::new(value.span, errors.join("; ")));
-                    }
-                    let mut keys = BTreeSet::new();
-                    for (key, parameter, body, span) in configs {
-                        if !keys.insert(key.clone()) {
-                            return Err(Diagnostic::new(span, "duplicate configuration key"));
-                        }
-                        if self.checking {
-                            let scope = std::mem::replace(&mut self.scope, span);
-                            let mut captures = env.clone();
-                            self.bind(
-                                &mut captures,
-                                &parameter,
-                                Val::Host {
-                                    urn: decl.urn.clone(),
-                                },
-                            )?;
-                            let old = std::mem::replace(
-                                &mut self.identity,
-                                format!("{}/{key}", decl.urn),
-                            );
-                            let result = self.block(&body, &mut captures);
-                            self.identity = old;
-                            self.scope = scope;
-                            result?;
-                        } else {
-                            if self.output.configurations.len() >= 128 {
-                                return Err(Diagnostic::new(
-                                    span,
-                                    "configuration expansion limit exceeded",
-                                ));
-                            }
-                            self.output.configurations.push(Configuration {
-                                target: decl.urn.clone(),
-                                key,
-                                parameter,
-                                body,
-                                span,
-                                captures: env.clone(),
-                            });
-                        }
-                    }
-                    let handle = Val::Resource {
-                        urn: decl.urn.clone(),
-                        kind: decl.type_name().into(),
-                    };
-                    self.output.program.resources.push(decl);
+                    let handle = self.finalize_resource(decl, configs, value.span, env)?;
                     self.bind(env, name, handle)?;
                 } else {
                     if !matches!(v, Val::Data(_)) {
@@ -634,6 +601,66 @@ impl<'a> Evaluator<'a> {
         }
         Ok(())
     }
+    pub(crate) fn finalize_resource(
+        &mut self,
+        decl: ResourceDecl,
+        configs: Vec<(String, Name, Vec<Stmt>, Span)>,
+        span: Span,
+        env: &Env,
+    ) -> Result<Val> {
+        if self.output.program.resources.len() >= 128 {
+            return Err(Diagnostic::new(span, "resource expansion limit exceeded"));
+        }
+        let schema = self.schema(decl.type_name(), span)?;
+        let mut decl = decl;
+        schema.apply_defaults(&mut decl.inputs);
+        if let Err(errors) = schema.validate(&decl.inputs) {
+            return Err(Diagnostic::new(span, errors.join("; ")));
+        }
+        let mut keys = BTreeSet::new();
+        for (key, parameter, body, span) in configs {
+            if !keys.insert(key.clone()) {
+                return Err(Diagnostic::new(span, "duplicate configuration key"));
+            }
+            if self.checking {
+                let scope = std::mem::replace(&mut self.scope, span);
+                let mut captures = env.clone();
+                self.bind(
+                    &mut captures,
+                    &parameter,
+                    Val::Host {
+                        urn: decl.urn.clone(),
+                    },
+                )?;
+                let old = std::mem::replace(&mut self.identity, format!("{}/{key}", decl.urn));
+                let result = self.block(&body, &mut captures);
+                self.identity = old;
+                self.scope = scope;
+                result?;
+            } else {
+                if self.output.configurations.len() >= 128 {
+                    return Err(Diagnostic::new(
+                        span,
+                        "configuration expansion limit exceeded",
+                    ));
+                }
+                self.output.configurations.push(Configuration {
+                    target: decl.urn.clone(),
+                    key,
+                    parameter,
+                    body,
+                    span,
+                    captures: env.clone(),
+                });
+            }
+        }
+        let handle = Val::Resource {
+            urn: decl.urn.clone(),
+            kind: decl.type_name().into(),
+        };
+        self.output.program.resources.push(decl);
+        Ok(handle)
+    }
     fn scoped(&mut self, body: &[Stmt], env: &Env) -> Result<()> {
         let old = self.scope;
         if let (Some(first), Some(last)) = (body.first(), body.last()) {
@@ -671,9 +698,15 @@ impl<'a> Evaluator<'a> {
         }
         Ok(a)
     }
-    fn expr(&mut self, e: &Expr, env: &Env) -> Result<Val> {
+    pub(crate) fn expr(&mut self, e: &Expr, env: &Env) -> Result<Val> {
         self.spend(e.span)?;
         let value = match &e.kind {
+            ExprKind::Record(..) => {
+                return Err(Diagnostic::new(
+                    e.span,
+                    "struct literals require edition 0.2",
+                ));
+            }
             ExprKind::Literal(v) => Val::Data(Atom::known(v.clone())),
             ExprKind::Name(n) => {
                 if let Some(binding) = env.get(&n.text) {
@@ -739,6 +772,10 @@ impl<'a> Evaluator<'a> {
             ExprKind::Member(base, name) => {
                 let base = self.expr(base, env)?;
                 match base {
+                    Val::Record { fields } => fields
+                        .get(&name.text)
+                        .cloned()
+                        .ok_or_else(|| Diagnostic::new(name.span, "unknown record field"))?,
                     Val::ModuleOutputs(outputs) => Val::Data(
                         outputs
                             .get(&name.text)
@@ -1266,7 +1303,7 @@ impl<'a> Evaluator<'a> {
         }
         Ok(s.into())
     }
-    fn completions(&self, v: &Val) -> Vec<Completion> {
+    pub(crate) fn completions(&self, v: &Val) -> Vec<Completion> {
         match v {
             Val::ModuleOutputs(outputs) => outputs
                 .iter()
@@ -1418,7 +1455,7 @@ fn parse_type(s: &str) -> Option<FieldType> {
         }
     }
 }
-fn check_atom(expected: &FieldType, a: &Atom, span: Span) -> Result<()> {
+pub(crate) fn check_atom(expected: &FieldType, a: &Atom, span: Span) -> Result<()> {
     let compatible = match (expected, &a.ty) {
         (FieldType::Any, _) => true,
         (
@@ -1495,7 +1532,7 @@ fn operation_fields(kind: &str) -> Vec<(&'static str, FieldType)> {
         _ => Vec::new(),
     }
 }
-fn json_size(v: &Value) -> usize {
+pub(crate) fn json_size(v: &Value) -> usize {
     match v {
         Value::String(s) => s.len(),
         Value::Array(a) => a.iter().map(json_size).sum::<usize>() + a.len() * 16,
@@ -1503,8 +1540,9 @@ fn json_size(v: &Value) -> usize {
         _ => 16,
     }
 }
-fn value_size(v: &Val) -> usize {
+pub(crate) fn value_size(v: &Val) -> usize {
     match v {
+        Val::Record { fields } => fields.iter().map(|(k, v)| k.len() + value_size(v)).sum(),
         Val::ModuleBuilder { inputs, .. } | Val::ModuleOutputs(inputs) => inputs
             .iter()
             .map(|(k, a)| k.len() + json_size(&a.json))
