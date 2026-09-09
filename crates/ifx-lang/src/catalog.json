@@ -1,0 +1,775 @@
+[
+  {
+    "type_name": "linode.instance",
+    "doc": "A Linode virtual machine. Outputs an SSH connection so `host.*` resources can configure it once it is running.",
+    "inputs": [
+      {
+        "name": "label",
+        "ty": {
+          "kind": "string"
+        },
+        "doc": "Unique name shown in the Linode Cloud Manager; an existing instance with this label is adopted instead of created.",
+        "required": true,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "region",
+        "ty": {
+          "kind": "enum",
+          "variants": [
+            "gb-lon",
+            "se-sto",
+            "es-mad",
+            "in-maa",
+            "jp-osa",
+            "it-mil",
+            "us-mia",
+            "id-cgk",
+            "us-lax",
+            "nl-ams",
+            "au-mel",
+            "in-bom-2",
+            "de-fra-2",
+            "sg-sin-2",
+            "jp-tyo-3",
+            "us-iad-2",
+            "fr-par-2",
+            "br-gru",
+            "us-sea",
+            "fr-par",
+            "us-ord",
+            "us-iad",
+            "ap-southeast",
+            "ca-central",
+            "ap-west",
+            "us-central",
+            "ap-northeast",
+            "eu-central",
+            "ap-south",
+            "eu-west",
+            "us-east",
+            "us-southeast",
+            "us-west"
+          ],
+          "open": true
+        },
+        "doc": "Data-center slug, e.g. `us-east` or `eu-central` (`linode-cli regions list`).",
+        "required": true,
+        "sensitive": false,
+        "replace": true
+      },
+      {
+        "name": "type",
+        "ty": {
+          "kind": "enum",
+          "variants": [
+            "g6-nanode-1",
+            "g6-standard-1",
+            "g6-standard-2",
+            "g6-standard-4",
+            "g6-standard-6",
+            "g6-standard-8",
+            "g6-standard-16",
+            "g6-standard-20",
+            "g6-standard-24",
+            "g6-standard-32",
+            "g7-highmem-1",
+            "g7-highmem-2",
+            "g7-highmem-4",
+            "g7-highmem-8",
+            "g7-highmem-16",
+            "g6-dedicated-2",
+            "g6-dedicated-4",
+            "g6-dedicated-8",
+            "g6-dedicated-16",
+            "g6-dedicated-32",
+            "g6-dedicated-48",
+            "g6-dedicated-50",
+            "g6-dedicated-56",
+            "g1-gpu-rtx6000-1",
+            "g1-gpu-rtx6000-2",
+            "g1-gpu-rtx6000-3",
+            "g1-gpu-rtx6000-4",
+            "g7-premium-2",
+            "g7-premium-4",
+            "g7-premium-8",
+            "g7-premium-16",
+            "g7-premium-32",
+            "g7-premium-48",
+            "g7-premium-50",
+            "g7-premium-56",
+            "g2-gpu-rtx4000a1-s",
+            "g2-gpu-rtx4000a1-m",
+            "g2-gpu-rtx4000a1-l",
+            "g2-gpu-rtx4000a1-xl",
+            "g2-gpu-rtx4000a2-s",
+            "g2-gpu-rtx4000a2-m",
+            "g2-gpu-rtx4000a2-hs",
+            "g2-gpu-rtx4000a4-s",
+            "g2-gpu-rtx4000a4-m",
+            "g1-accelerated-netint-vpu-t1u1-s",
+            "g1-accelerated-netint-vpu-t1u1-m",
+            "g1-accelerated-netint-vpu-t1u2-s",
+            "g1-accelerated-netint-vpu-t1u8-s",
+            "g1-accelerated-netint-vpu-t1u8-m",
+            "g1-accelerated-netint-vpu-t1u8-l",
+            "g8-dedicated-4-2",
+            "g8-dedicated-8-4",
+            "g8-dedicated-16-8",
+            "g8-dedicated-32-16",
+            "g8-dedicated-64-32",
+            "g8-dedicated-96-48",
+            "g8-dedicated-128-64",
+            "g8-dedicated-256-128",
+            "g8-dedicated-512-256",
+            "g8-dedicated-8-2",
+            "g8-dedicated-16-4",
+            "g8-dedicated-32-8",
+            "g8-dedicated-64-16",
+            "g8-dedicated-96-24",
+            "g8-dedicated-128-32",
+            "g8-dedicated-256-64",
+            "g8-dedicated-512-128",
+            "g7-dedicated-4-2",
+            "g7-dedicated-8-4",
+            "g7-dedicated-16-8",
+            "g7-dedicated-32-16",
+            "g7-dedicated-64-32",
+            "g7-dedicated-96-48",
+            "g7-dedicated-128-50",
+            "g7-dedicated-256-56"
+          ],
+          "open": true
+        },
+        "doc": "Plan slug that sets CPU/RAM/disk, e.g. `g6-nanode-1`; changing it resizes the instance in place (with a reboot).",
+        "required": true,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "image",
+        "ty": {
+          "kind": "enum",
+          "variants": [
+            "linode/almalinux10",
+            "linode/almalinux8",
+            "linode/almalinux9",
+            "linode/alpine3.21",
+            "linode/alpine3.22",
+            "linode/alpine3.23",
+            "linode/alpine3.24",
+            "linode/arch",
+            "linode/centos-stream10",
+            "linode/centos-stream9",
+            "linode/debian11",
+            "linode/debian12",
+            "linode/debian13",
+            "linode/fedora43",
+            "linode/gentoo",
+            "linode/kali",
+            "linode/debian13-kube-v1.34.9",
+            "linode/debian13-kube-v1.35.6",
+            "linode/debian13-kube-v1.36.2",
+            "linode/debian13-kube-v1.36.3",
+            "linode/rocky10",
+            "linode/rocky8",
+            "linode/rocky9",
+            "linode/slackware15.0",
+            "linode/ubuntu22.04",
+            "linode/ubuntu22.04-kube",
+            "linode/ubuntu24.04-kube-vmulti",
+            "linode/ubuntu24.04",
+            "linode/ubuntu26.04"
+          ],
+          "open": true
+        },
+        "doc": "Operating-system image slug the disk is built from, e.g. `linode/debian12`.",
+        "required": false,
+        "sensitive": false,
+        "replace": true,
+        "group": "source"
+      },
+      {
+        "name": "backup_id",
+        "ty": {
+          "kind": "int"
+        },
+        "doc": "Backup id to restore into the new instance; mutually exclusive with `image`.",
+        "required": false,
+        "sensitive": false,
+        "replace": true,
+        "group": "source"
+      },
+      {
+        "name": "root_pass",
+        "ty": {
+          "kind": "string"
+        },
+        "doc": "Root password set at first boot; never read back from the API.",
+        "required": false,
+        "sensitive": true,
+        "replace": true
+      },
+      {
+        "name": "authorized_keys",
+        "ty": {
+          "kind": "list",
+          "item": {
+            "kind": "string"
+          }
+        },
+        "doc": "Public SSH keys written to root's `authorized_keys` at first boot.",
+        "required": false,
+        "sensitive": false,
+        "replace": true
+      },
+      {
+        "name": "authorized_users",
+        "ty": {
+          "kind": "list",
+          "item": {
+            "kind": "string"
+          }
+        },
+        "doc": "Linode account usernames whose profile SSH keys are installed at first boot.",
+        "required": false,
+        "sensitive": false,
+        "replace": true
+      },
+      {
+        "name": "disk_encryption",
+        "ty": {
+          "kind": "enum",
+          "variants": [
+            "enabled",
+            "disabled"
+          ]
+        },
+        "doc": "Local disk encryption policy selected when the instance is created.",
+        "required": false,
+        "sensitive": false,
+        "replace": true
+      },
+      {
+        "name": "boot_size",
+        "ty": {
+          "kind": "int"
+        },
+        "doc": "Primary boot disk size in MiB; remaining plan storage stays unallocated.",
+        "required": false,
+        "sensitive": false,
+        "replace": true
+      },
+      {
+        "name": "swap_size",
+        "ty": {
+          "kind": "int"
+        },
+        "doc": "Swap disk size in MiB (Linode defaults to 512).",
+        "required": false,
+        "sensitive": false,
+        "replace": true
+      },
+      {
+        "name": "interface_generation",
+        "ty": {
+          "kind": "enum",
+          "variants": [
+            "legacy_config",
+            "linode"
+          ]
+        },
+        "doc": "Networking model selected at creation; this cannot be changed in place.",
+        "required": false,
+        "sensitive": false,
+        "replace": true
+      },
+      {
+        "name": "interfaces",
+        "ty": {
+          "kind": "list",
+          "item": {
+            "kind": "any"
+          }
+        },
+        "doc": "Linode or legacy interface definitions passed to the create API.",
+        "required": false,
+        "sensitive": false,
+        "replace": true
+      },
+      {
+        "name": "ipv4",
+        "ty": {
+          "kind": "list",
+          "item": {
+            "kind": "string"
+          }
+        },
+        "doc": "An unassigned reserved public IPv4 address to assign at creation.",
+        "required": false,
+        "sensitive": false,
+        "replace": true
+      },
+      {
+        "name": "kernel",
+        "ty": {
+          "kind": "string"
+        },
+        "doc": "Kernel id selected for the initial configuration profile.",
+        "required": false,
+        "sensitive": false,
+        "replace": true
+      },
+      {
+        "name": "network_helper",
+        "ty": {
+          "kind": "bool"
+        },
+        "doc": "Enable Network Helper for Linode-interface networking.",
+        "required": false,
+        "sensitive": false,
+        "replace": true
+      },
+      {
+        "name": "placement_group_id",
+        "ty": {
+          "kind": "int"
+        },
+        "doc": "Placement group to join at creation; it must be in the selected region.",
+        "required": false,
+        "sensitive": false,
+        "replace": true
+      },
+      {
+        "name": "stackscript_id",
+        "ty": {
+          "kind": "int"
+        },
+        "doc": "StackScript id to run during image deployment.",
+        "required": false,
+        "sensitive": false,
+        "replace": true
+      },
+      {
+        "name": "stackscript_data",
+        "ty": {
+          "kind": "any"
+        },
+        "doc": "StackScript UDF values; treated as sensitive because they commonly contain credentials.",
+        "required": false,
+        "sensitive": true,
+        "replace": true
+      },
+      {
+        "name": "tags",
+        "ty": {
+          "kind": "list",
+          "item": {
+            "kind": "string"
+          }
+        },
+        "doc": "Free-form labels for grouping and filtering in the Cloud Manager.",
+        "required": false,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "private_ip",
+        "ty": {
+          "kind": "bool"
+        },
+        "doc": "Also assign a private (192.168.x.x) address reachable from other Linodes in the same region.",
+        "required": false,
+        "sensitive": false,
+        "replace": true
+      },
+      {
+        "name": "backups_enabled",
+        "ty": {
+          "kind": "bool"
+        },
+        "doc": "Enrol in the paid Linode Backup Service (daily snapshots).",
+        "required": false,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "backup_schedule",
+        "ty": {
+          "kind": "object",
+          "name": "BackupSchedule",
+          "fields": [
+            {
+              "name": "day",
+              "ty": {
+                "kind": "enum",
+                "variants": [
+                  "Scheduling",
+                  "Sunday",
+                  "Monday",
+                  "Tuesday",
+                  "Wednesday",
+                  "Thursday",
+                  "Friday",
+                  "Saturday"
+                ],
+                "open": true
+              },
+              "doc": "Preferred backup day, or `Scheduling` for automatic assignment.",
+              "required": false,
+              "sensitive": false,
+              "replace": false
+            },
+            {
+              "name": "window",
+              "ty": {
+                "kind": "string"
+              },
+              "doc": "Preferred two-hour UTC window (`W0` through `W22`).",
+              "required": false,
+              "sensitive": false,
+              "replace": false
+            }
+          ]
+        },
+        "doc": "Paid Backup Service schedule.",
+        "required": false,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "maintenance_policy",
+        "ty": {
+          "kind": "enum",
+          "variants": [
+            "linode/migrate",
+            "linode/power_off_on"
+          ]
+        },
+        "doc": "Prefer live migration or power-off/on during host maintenance.",
+        "required": false,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "watchdog_enabled",
+        "ty": {
+          "kind": "bool"
+        },
+        "doc": "Enable Lassie to restart an instance that powers off unexpectedly.",
+        "required": false,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "alerts",
+        "ty": {
+          "kind": "object",
+          "name": "InstanceAlerts",
+          "fields": [
+            {
+              "name": "cpu",
+              "ty": {
+                "kind": "int"
+              },
+              "doc": "CPU usage threshold.",
+              "required": false,
+              "sensitive": false,
+              "replace": false
+            },
+            {
+              "name": "io",
+              "ty": {
+                "kind": "int"
+              },
+              "doc": "Disk I/O threshold.",
+              "required": false,
+              "sensitive": false,
+              "replace": false
+            },
+            {
+              "name": "network_in",
+              "ty": {
+                "kind": "int"
+              },
+              "doc": "Inbound network threshold.",
+              "required": false,
+              "sensitive": false,
+              "replace": false
+            },
+            {
+              "name": "network_out",
+              "ty": {
+                "kind": "int"
+              },
+              "doc": "Outbound network threshold.",
+              "required": false,
+              "sensitive": false,
+              "replace": false
+            },
+            {
+              "name": "transfer_quota",
+              "ty": {
+                "kind": "int"
+              },
+              "doc": "Transfer quota percentage threshold.",
+              "required": false,
+              "sensitive": false,
+              "replace": false
+            }
+          ]
+        },
+        "doc": "Cloud Manager alert thresholds.",
+        "required": false,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "booted",
+        "ty": {
+          "kind": "bool"
+        },
+        "doc": "Keep the instance powered on (`true`) or shut down (`false`).",
+        "required": false,
+        "default": true,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "firewall_id",
+        "ty": {
+          "kind": "int"
+        },
+        "doc": "Id of a Cloud Firewall to attach at creation; prefer `linode.firewall(linodes=...)` for attachments that can change later.",
+        "required": false,
+        "sensitive": false,
+        "replace": true
+      },
+      {
+        "name": "user_data",
+        "ty": {
+          "kind": "string"
+        },
+        "doc": "cloud-init user data (e.g. a `#cloud-config` document) run on first boot; base64-encoded for you.",
+        "required": false,
+        "sensitive": true,
+        "replace": true
+      },
+      {
+        "name": "ssh_user",
+        "ty": {
+          "kind": "string"
+        },
+        "doc": "Login user for the `connection` output; not sent to Linode.",
+        "required": false,
+        "default": "root",
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "connect_timeout_secs",
+        "ty": {
+          "kind": "int"
+        },
+        "doc": "Seconds `host.*` resources keep retrying the first SSH connection while the instance finishes booting.",
+        "required": false,
+        "sensitive": false,
+        "replace": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "id",
+        "ty": {
+          "kind": "int"
+        },
+        "doc": "Numeric Linode id.",
+        "required": false,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "label",
+        "ty": {
+          "kind": "string"
+        },
+        "doc": "Instance label.",
+        "required": false,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "ipv4",
+        "ty": {
+          "kind": "string"
+        },
+        "doc": "First public IPv4 address.",
+        "required": false,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "ipv4s",
+        "ty": {
+          "kind": "list",
+          "item": {
+            "kind": "string"
+          }
+        },
+        "doc": "Every IPv4 address, public and private.",
+        "required": false,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "ipv6",
+        "ty": {
+          "kind": "string"
+        },
+        "doc": "Public IPv6 address (without prefix length).",
+        "required": false,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "status",
+        "ty": {
+          "kind": "string"
+        },
+        "doc": "Lifecycle state reported by Linode, e.g. `running` or `offline`.",
+        "required": false,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "region",
+        "ty": {
+          "kind": "string"
+        },
+        "doc": "Region slug.",
+        "required": false,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "type",
+        "ty": {
+          "kind": "string"
+        },
+        "doc": "Plan slug.",
+        "required": false,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "disk_encryption",
+        "ty": {
+          "kind": "string"
+        },
+        "doc": "Observed disk encryption policy.",
+        "required": false,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "interface_generation",
+        "ty": {
+          "kind": "string"
+        },
+        "doc": "Observed networking model.",
+        "required": false,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "maintenance_policy",
+        "ty": {
+          "kind": "string"
+        },
+        "doc": "Observed host maintenance policy.",
+        "required": false,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "watchdog_enabled",
+        "ty": {
+          "kind": "bool"
+        },
+        "doc": "Whether Lassie is enabled.",
+        "required": false,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "connection",
+        "ty": {
+          "kind": "connection"
+        },
+        "doc": "SSH connection to the public IPv4 as `ssh_user`; pass as `on=` to `host.*` resources.",
+        "required": false,
+        "sensitive": false,
+        "replace": false
+      }
+    ]
+  },
+  {
+    "type_name": "memory.value",
+    "doc": "Holds a value in memory; outputs it back as `value`.",
+    "inputs": [
+      {
+        "name": "value",
+        "ty": {
+          "kind": "any"
+        },
+        "doc": "Any JSON value.",
+        "required": true,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "key",
+        "ty": {
+          "kind": "string"
+        },
+        "doc": "Changing this replaces the resource.",
+        "required": false,
+        "sensitive": false,
+        "replace": true
+      }
+    ],
+    "outputs": [
+      {
+        "name": "id",
+        "ty": {
+          "kind": "string"
+        },
+        "doc": "",
+        "required": false,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "value",
+        "ty": {
+          "kind": "any"
+        },
+        "doc": "",
+        "required": false,
+        "sensitive": false,
+        "replace": false
+      },
+      {
+        "name": "key",
+        "ty": {
+          "kind": "string"
+        },
+        "doc": "",
+        "required": false,
+        "sensitive": false,
+        "replace": false
+      }
+    ]
+  }
+]

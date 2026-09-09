@@ -39,6 +39,17 @@ fn main() -> anyhow::Result<()> {
     let out_dir = root.join("crates/ifx-program/src/generated");
 
     let mut stale = Vec::new();
+    let language_schemas: Vec<_> = schemas
+        .iter()
+        .filter(|s| matches!(s.type_name.as_str(), "linode.instance" | "memory.value"))
+        .collect();
+    check_or_write(
+        &root,
+        &root.join("crates/ifx-lang/src/catalog.json"),
+        serde_json::to_string_pretty(&language_schemas)? + "\n",
+        cli.check,
+        &mut stale,
+    )?;
     for (provider, group) in by_provider(&schemas) {
         let path = out_dir.join(format!("{provider}.rs"));
         let code = rustfmt(&rust::provider_module(provider, &group))?;

@@ -1,0 +1,55 @@
+{
+  "name": "ifx-language",
+  "displayName": "IFX Language (Experimental)",
+  "description": "Editor adapter for the local Rust IFX language server",
+  "version": "0.1.0",
+  "publisher": "burnableifx",
+  "license": "MIT OR Apache-2.0",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./extension.cjs",
+  "activationEvents": [
+    "onLanguage:ifx"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "ifx",
+        "aliases": [
+          "IFX",
+          "ifx"
+        ],
+        "extensions": [
+          ".ifx"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "configuration": {
+      "title": "IFX",
+      "properties": {
+        "ifx.serverPath": {
+          "type": "string",
+          "default": "ifx-lang",
+          "scope": "machine",
+          "description": "Trusted local path to the Rust ifx-lang binary. Reload the window after changing it."
+        }
+      }
+    }
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false
+    }
+  },
+  "scripts": {
+    "check": "node --check extension.cjs"
+  },
+  "dependencies": {
+    "vscode-languageclient": "9.0.1"
+  }
+}

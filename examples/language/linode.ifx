@@ -1,0 +1,19 @@
+// Compile only. These are existing general IFX fields, not managed authorization.
+input region: String = "us-east";
+let machines = {"web-a": "g6-nanode-1", "web-b": "g6-nanode-1"};
+for key, plan in machines {
+    resource web = linode.instance(key)
+        .label(key)
+        .region(region)
+        .type(plan)
+        .image("linode/debian12")
+        .configure("bootstrap", |host| {
+            host.directory("/srv/app").ensure();
+        });
+}
+resource origin = linode.instance("origin")
+    .label("origin")
+    .region(region)
+    .type("g6-nanode-1")
+    .image("linode/debian12");
+output address: String = origin.ipv4;

@@ -84,14 +84,18 @@ holds credentials for more than one caller. Hosted executors accept only emitted
 
 Updated requirement (2026-09-08): IFX will supply a DSL and first-class language
 server as one authoring product. Rust remains the implementation language, and
-existing Rust stacks remain supported during migration. Grammar, frontend library
-and initial language subset are still open; neither DSL nor LSP is implemented.
+existing Rust stacks remain supported during migration. The experimental
+[testable language MVP](language.md) now implements a brace-based grammar, fluent
+resource builders, typed local modules and ordered configuration lambdas, with a
+shared Rust analyzer, CLI, stdio LSP and in-memory policy simulator. Real host
+execution, durable policy state and integration into `burn` remain unbuilt.
 
-The CLI and language server will share parsing, module/name resolution, type
+The CLI and language server share parsing, module/name resolution, type
 checking and semantic diagnostics, with source ranges preserved through lowering
 to local IFX Programs. Existing resource schemas provide field/type documentation,
 defaults, required/exclusive fields, sensitive/replacement annotations and typed
-outputs; export versioned metadata without loading provider execution code.
+outputs. The prototype consumes generated catalog metadata through the lightweight
+Program crate without loading provider execution code.
 
 The first increment is an editor-assisted single-resource module: completion of
 resources/fields/values, diagnostics on incomplete source, hover, local navigation,

@@ -12,10 +12,15 @@ that prove the result as one dependency graph. A reference such as `vm.connectio
 carries both a value and an ordering edge: create the VM before configuring it, and
 delete it after its files, packages, and services.
 
-Rust is the only stack language. The lightweight `ifx-program` crate supplies generated,
+Rust is the production stack language. The lightweight `ifx-program` crate supplies generated,
 typed builders. `ifxd` watches and compiles configured stack roots, emits immutable
 Program revisions, validates them, and owns every provider operation. The `ifx` CLI is a
 control-plane client; it never executes a stack or provider locally.
+
+The experimental [IFX DSL and LSP](docs/language.md) now provide fluent declarations,
+typed local modules and ordered configuration lambdas. `ifx-lang` checks/compiles
+them locally and tests configuration against an in-memory host; real host execution
+and integration into `burn` remain separate work.
 
 | Declare | Reconcile | Prove |
 |---|---|---|

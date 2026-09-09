@@ -1,0 +1,5 @@
+import machine from "./machine.ifx";
+module east = machine("east").label("web-east").region("us-east");
+module west = machine("west").label("web-west").region("us-west");
+output east_address: String = east.address;
+output west_address: String = west.address;

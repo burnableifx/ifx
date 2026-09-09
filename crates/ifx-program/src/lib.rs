@@ -6,6 +6,7 @@ use std::process::ExitCode;
 
 pub mod generated;
 pub mod model;
+pub mod schema;
 pub mod stack;
 
 pub use generated::check;

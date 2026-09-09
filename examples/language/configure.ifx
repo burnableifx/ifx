@@ -1,0 +1,25 @@
+// Simulation only: no provider or host operations leave the process.
+input revision: String = "v1";
+resource web = memory.value("primary-web")
+    .value("test target")
+    .configure("bootstrap", |host| {
+        host.package("nginx").installed(true).ensure();
+        host.file("/etc/nginx/app.conf")
+            .content("revision=" + revision)
+            .mode("0644")
+            .ensure();
+        host.service("nginx").enabled(true).running(true).ensure();
+        host.once("initialize", || {
+            host.directory("/srv/app").mode("0755").ensure();
+            host.record("initialized");
+        });
+        host.always("visit", || {
+            host.record("visited");
+        });
+        host.on_change("reload", revision, || {
+            host.record("reloaded");
+        });
+        if host.exists("/srv/app") {
+            host.record("observed-after-creation");
+        }
+    });

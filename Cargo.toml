@@ -7,6 +7,7 @@ members = [
     "crates/ifx-gen",
     "crates/ifx-labs",
     "crates/ifx-program",
+    "crates/ifx-lang",
 ]
 
 [workspace.package]

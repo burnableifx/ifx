@@ -1,0 +1,20 @@
+[package]
+name = "ifx-lang"
+description = "IFX language, offline authoring tools and in-memory configuration simulator"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+ifx-program.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+rustix = { version = "1", features = ["fs"] }
+sha2.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
