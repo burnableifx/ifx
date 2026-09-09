@@ -1,0 +1,32 @@
+// PROPOSAL: ifx/0.2-draft. Not accepted by the current parser.
+// Existing in-memory host operations; no invented command or SSH execution API.
+use ifx::memory::Value;
+
+fn main(revision: String = "v1") {
+    let worker = Value::new()
+        .key("worker")
+        .value("simulation target")
+        .configure("bootstrap", |host| {
+            host.file("/etc/app-version")
+                .content(revision)
+                .mode("0644")
+                .ensure();
+
+            host.once("initialize", || {
+                host.directory("/srv/app").ensure();
+                host.record("initialized");
+            });
+
+            host.always("visit", || {
+                host.record("visited");
+            });
+
+            host.on_change("revision", revision, || {
+                host.record("revision-changed");
+            });
+
+            if host.exists("/srv/app") {
+                host.record("directory-observed");
+            }
+        });
+}

@@ -1,0 +1,35 @@
+// PROPOSAL: ifx/0.2-draft. Not accepted by the current parser.
+use shared::web::WebServer;
+
+pub struct Environment {
+    pub name: String,
+    pub region: String = "us-east",
+    pub enabled: Bool = true,
+}
+
+pub fn deploy_environments(environments: Map[Environment]) {
+    // String map keys, rather than list positions, provide stable identities.
+    for key, settings in environments {
+        if settings.enabled {
+            let server = WebServer::new()
+                .key(key)
+                .name(settings.name)
+                .region(settings.region);
+        }
+    }
+    // Unit return: declarations remain in the graph even with no returned handles.
+    return;
+}
+
+fn main() {
+    let environments: Map[Environment] = {
+        "staging": Environment { name: "staging-web" },
+        "production": Environment { name: "production-web", region: "us-central" },
+        "preview": Environment { name: "preview-web", enabled: false },
+    };
+
+    // This function declares infrastructure, so it receives a scoped builder call.
+    deploy_environments()
+        .key("fleet")
+        .environments(environments);
+}

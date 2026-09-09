@@ -1,0 +1,40 @@
+// PROPOSAL: ifx/0.2-draft. Not accepted by the current parser.
+use ifx::linode::Instance;
+
+pub struct WebServer {
+    pub machine: Instance,
+    pub website_url: String,
+}
+
+impl WebServer {
+    pub fn new(
+        name: String,
+        region: String = "us-east",
+        revision: String = "v1",
+    ) -> Self {
+        let machine = Instance::new()
+            .key("vm")
+            .label(name)
+            .region(region)
+            .type("g6-nanode-1")
+            .image("linode/debian12")
+            .configure("bootstrap", |host| {
+                host.package("nginx").installed(true).ensure();
+                host.directory("/srv/app").ensure();
+                host.file("/srv/app/revision")
+                    .content(revision)
+                    .mode("0644")
+                    .ensure();
+                host.service("nginx").enabled(true).running(true).ensure();
+            });
+
+        return Self {
+            machine: machine,
+            website_url: "http://" + machine.ipv4,
+        };
+    }
+
+    pub fn address(self) -> String {
+        return self.machine.ipv4;
+    }
+}

@@ -6,6 +6,11 @@ server. Configuration runs against an in-memory host only. Existing Rust stacks
 and IFXD execution are unchanged; this is not yet wired into `burn` or real host
 execution.
 
+The [function/struct language proposal](language-next.md) refines this surface with
+ordinary `let` bindings, typed parameters, `impl`/`new`, explicit returns and
+`.key(...)` identity. Its [examples](../examples/language/proposal/README.md) are
+design material and do not run on this implementation.
+
 ## Try it
 
 The [numbered infrastructure examples](../examples/language/README.md) show single

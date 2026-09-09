@@ -1,0 +1,30 @@
+// PROPOSAL: ifx/0.2-draft. Not accepted by the current parser.
+// Constructing data has no graph effect and needs no infrastructure key.
+pub struct Settings {
+    pub name: String,
+    pub region: String = "us-east",
+}
+
+impl Settings {
+    pub fn new(name: String, region: String = "us-east") -> Self {
+        return Self { name: name, region: region };
+    }
+
+    pub fn description(self) -> String {
+        return self.name + " in " + self.region;
+    }
+}
+
+fn label(prefix: String, suffix: String) -> String {
+    return prefix + "-" + suffix;
+}
+
+fn main() -> String {
+    let name = label("production", "web");
+    let direct = Settings { name: name };
+    let constructed = Settings::new()
+        .name(name)
+        .region(direct.region);
+
+    return constructed.description();
+}

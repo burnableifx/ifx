@@ -82,6 +82,12 @@ holds credentials for more than one caller. Hosted executors accept only emitted
 
 ## Authoring DSL and language server
 
+The [2026-09-09 authoring draft](language-next.md) and
+[proposal examples](../examples/language/proposal/README.md) refine the DSL toward
+`let`, typed parameters, structs, `impl`/`new`, explicit returns and `.key(...)`.
+They specify constructor effects/finalization, imports and LSP acceptance. These
+are design artifacts; the current grammar and editor implementation are unchanged.
+
 Updated requirement (2026-09-08): IFX will supply a DSL and first-class language
 server as one authoring product. Rust remains the implementation language, and
 existing Rust stacks remain supported during migration. The experimental

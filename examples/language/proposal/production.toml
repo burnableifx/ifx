@@ -1,0 +1,4 @@
+# Proposed root-parameter file, consumed by the future --inputs option.
+# Keys match fn main parameters; this file supplies values, not language code.
+name = "customer-portal"
+region = "us-east"

@@ -1,0 +1,21 @@
+// PROPOSAL: ifx/0.2-draft. Not accepted by the current parser.
+use shared::web::WebServer;
+
+pub struct Application {
+    pub web: WebServer,
+    pub website_url: String,
+}
+
+impl Application {
+    pub fn new(name: String, region: String = "us-east") -> Self {
+        let web = WebServer::new()
+            .key("web")
+            .name(name + "-web")
+            .region(region);
+
+        return Self {
+            web: web,
+            website_url: web.website_url,
+        };
+    }
+}

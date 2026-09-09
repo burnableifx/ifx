@@ -1,0 +1,20 @@
+// PROPOSAL: ifx/0.2-draft. Not accepted by the current parser.
+use crate::application::Application;
+
+pub struct Deployment {
+    pub application: Application,
+    pub website_url: String,
+}
+
+fn main(name: String = "customer-portal", region: String = "us-east") -> Deployment {
+    let production = Application::new()
+        .key("production")
+        .name(name)
+        .region(region);
+
+    // Returning a value exposes it; the constructor already declared the graph.
+    return Deployment {
+        application: production,
+        website_url: production.website_url,
+    };
+}

@@ -1,5 +1,9 @@
 # Reading the IFX language examples
 
+For the latest design discussion, start with the [function/struct proposal examples](proposal/README.md)
+and [draft specification](../../docs/language-next.md). They are separately marked
+as unimplemented; the examples below retain the existing language's syntax.
+
 Read the numbered examples in order. They illustrate common infrastructure-as-code
 patterns using IFX's own proposed authoring surface, not translations of a specific
 Terraform or Pulumi provider API. Resource names in sketches are design proposals.

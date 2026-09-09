@@ -1,0 +1,17 @@
+[language]
+edition = "0.2-draft"
+
+# Proposed edition selector; remaining manifest layout follows the current project format.
+[package]
+name = "language_proposal"
+version = "0.2.0"
+entry = "01-application.ifx"
+
+[modules]
+application = "application.ifx"
+environments = "02-environments.ifx"
+lifecycle = "03-lifecycle.ifx"
+values = "04-values.ifx"
+
+[dependencies]
+shared = { path = "shared" }

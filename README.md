@@ -20,7 +20,9 @@ control-plane client; it never executes a stack or provider locally.
 The experimental [IFX DSL and LSP](docs/language.md) now provide fluent declarations,
 typed local modules and ordered configuration lambdas. `ifx-lang` checks/compiles
 them locally and tests configuration against an in-memory host; real host execution
-and integration into `burn` remain separate work.
+and integration into `burn` remain separate work. A separate
+[language design draft](docs/language-next.md) explores functions, structs,
+constructors and explicit returns; its examples are not yet executable.
 
 | Declare | Reconcile | Prove |
 |---|---|---|
