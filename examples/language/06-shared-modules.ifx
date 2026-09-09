@@ -1,0 +1,16 @@
+// The dependency alias comes from Ifx.toml; exports come from shared/Ifx.toml.
+use shared::web as web_server;
+use crate::machine;
+
+input region: String = "us-east";
+
+module app = web_server("application")
+    .name("production-web")
+    .region(region);
+
+module worker = machine("worker")
+    .label("production-worker")
+    .region(region);
+
+output website: String = app.url;
+output worker_address: String = worker.address;

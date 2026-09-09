@@ -1,0 +1,18 @@
+[package]
+name = "language_examples"
+version = "0.1.0"
+entry = "06-shared-modules.ifx"
+
+[modules]
+machine = "machine.ifx"
+modules = "modules.ifx"
+configure = "configure.ifx"
+linode_resources = "linode.ifx"
+web_server = "01-web-server.ifx"
+environments = "02-environments.ifx"
+linode_sketch = "03-linode-web-stack.sketch.ifx"
+aws_sketch = "04-aws-network.sketch.ifx"
+lifecycle_sketch = "05-application-lifecycle.sketch.ifx"
+
+[dependencies]
+shared = { path = "shared" }

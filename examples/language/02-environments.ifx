@@ -1,6 +1,6 @@
 // Compiles today. Open machine.ifx alongside this file for LSP module analysis.
 // Similar to reusing a Terraform module or Pulumi component for several environments.
-import machine from "./machine.ifx";
+use crate::machine;
 
 input prefix: String = "example";
 input environments: Map[String] = {

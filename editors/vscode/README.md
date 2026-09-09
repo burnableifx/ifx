@@ -12,13 +12,15 @@ npm ci
 code --extensionDevelopmentPath="$PWD" ../../examples/language
 ```
 
-Open `.ifx` files. For the modules example, open both `modules.ifx` and
-`machine.ifx`; the server reads only open buffers. Try a trailing `.`, an invalid
+Open `.ifx` files under the project workspace. The server reads modules declared
+in `Ifx.toml` and already-fetched Git dependencies; those files need not be open.
+Try `use shared::` completion, a trailing `.`, an invalid
 `.region(42)`, hover, go to definition on a local variable, and formatting.
 
 This adapter contains no language semantics. It starts `ifx-lang lsp` through the
 standard VS Code language client. It does not compile Rust, invoke `burn`, or run
-configuration. Workspace trust is required to start the configured executable.
+configuration or fetch dependencies. Save manifest changes to update module scope.
+Workspace trust is required to start the configured executable.
 
 The adapter's syntax/package have been checked. The server has passed a real
 Neovim session and a stdio process test; a VS Code UI session remains unverified

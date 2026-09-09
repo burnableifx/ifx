@@ -1,0 +1,10 @@
+use crate::compute::server;
+
+input name: String = "web";
+input region: String = "us-east";
+
+module machine = server("machine")
+    .label(name)
+    .region(region);
+
+output url: String = "http://" + machine.address;

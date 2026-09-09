@@ -19,6 +19,7 @@ From the repository root:
 cargo build -p ifx-lang
 cargo run -p ifx-lang -- check examples/language/linode.ifx
 cargo run -p ifx-lang -- check examples/language/modules.ifx
+cargo run -p ifx-lang -- check examples/language/Ifx.toml
 cargo run -p ifx-lang -- simulate examples/language/configure.ifx --applies 2
 cargo run -p ifx-lang -- simulate examples/language/configure.ifx --applies 3 --replace-at 3
 cargo run -p ifx-lang -- compile examples/language/linode.ifx
@@ -53,10 +54,12 @@ The executable parser is `crates/ifx-lang/src/syntax.rs`. Its accepted subset is
 
 ```ebnf
 file       = { statement } ;
-statement  = binding | import | for | if | expression, ";" ;
+statement  = binding | use | import | for | if | expression, ";" ;
 binding    = ("let" | "resource" | "module" | "input" | "output"), identifier,
              [":", type], "=", expression, ";" ;
-import     = "import", identifier, "from", string, ";" ;
+use        = "use", identifier, "::", identifier, {"::", identifier},
+             ["as", identifier], ";" ;
+import     = "import", identifier, "from", string, ";" ; (* legacy *)
 for        = "for", identifier, [",", identifier], "in", expression, block ;
 if         = "if", expression, block, ["else", block] ;
 block      = "{", { statement }, "}" ;
@@ -86,13 +89,13 @@ map values are checked against declared map/input types when constrained.
 The parser recovers missing delimiters and partial chains for editor diagnostics;
 recovered invalid input never compiles. This grammar deliberately has no shell
 escape, arbitrary function calls, user function definitions, general closure values,
-mutation, `while`, remote imports or implicit package downloads. Lambdas are accepted
+mutation, `while`, imports containing URLs or implicit package downloads. Lambdas are accepted
 by `.configure` and the three action-policy methods only.
 
 ## Resources and modules
 
 ```text
-import machine from "./machine.ifx";
+use crate::machine;
 module east = machine("east").label("web-east").region("us-east");
 output address: String = east.address;
 ```
@@ -120,13 +123,117 @@ unchanged re-export from `ifx::schema`. Tooling does not load provider executors
 This is the general IFX schema, **not a Burnable managed-resource allowlist**. Catalog
 values are offline hints, not live price/capacity facts or authorization.
 
-Imports are declarations at module scope. CLI imports are relative `.ifx` files
-under the entry directory, with no parent/hidden components or symlinks. Files are
-opened relative to directory descriptors with no-follow/nonblocking flags and must
-be regular files. The LSP performs no filesystem discovery: open the entry and its
-imported files in the editor. Unsaved imported buffers override their earlier
-versions, and changes/closure recheck importers. Module errors identify the call
-site and child path/byte offset; cross-file navigation is still a later increment.
+`use` declarations belong at module scope. The last path segment becomes the local
+binding; `as` gives it a different name. `use` imports a module definition, and
+`module instance = definition("stable-key")...` instantiates it. There are no globs,
+grouped imports, `pub use`, or implicit source-directory scanning in this increment.
+
+### Projects and shareable packages
+
+[The working manifest](../examples/language/Ifx.toml) and
+[shared-package example](../examples/language/06-shared-modules.ifx) demonstrate:
+
+```rust
+use crate::machine;
+use shared::web as web_server;
+
+module app = web_server("application")
+    .name("production-web")
+    .region("us-east");
+output website: String = app.url;
+```
+
+```toml
+# Ifx.toml in the consuming project
+[package]
+name = "production"
+version = "0.1.0"
+entry = "main.ifx"
+
+[modules]
+machine = "modules/machine.ifx"
+
+[dependencies]
+shared = { path = "shared" }
+```
+
+`crate::` refers to the current package's `[modules]`. Other first segments are
+aliases explicitly listed in `[dependencies]`; a dependency cannot see consumer
+modules or other dependencies. The source file itself is a parameterized module:
+its existing `input` and `output` declarations form the interface. An entry file
+is optional for a library package. Select an exported `.ifx` file to check a library;
+checking/compiling `Ifx.toml` requires `package.entry`. Version is informational in
+this increment; there is no version solver.
+
+The shared directory can become its own Git repository. Its root manifest lists
+its available exports:
+
+```toml
+[package]
+name = "shared_infrastructure"
+version = "0.1.0"
+
+[modules]
+"compute::server" = "src/server.ifx"
+web = "src/web.ifx"
+```
+
+Within `src/web.ifx`, `use crate::compute::server;` imports the other exported file.
+Consumers can use `shared::compute::server`. Package identity and consumer alias
+are separate; deployed identity still comes from stable module/resource keys.
+All exports are public to consumers; private modules/re-exports are not implemented.
+
+To use Git, replace the local dependency with an HTTPS URL and an actual complete
+40-character lowercase commit SHA. This is a template, not a fetchable example:
+
+```toml
+[dependencies]
+shared = { git = "https://github.com/YOUR_ORG/ifx-modules.git", rev = "FULL_40_CHARACTER_COMMIT_SHA" }
+```
+
+Then run explicitly:
+
+```sh
+ifx-lang fetch --manifest-path Ifx.toml
+ifx-lang check Ifx.toml
+ifx-lang compile main.ifx
+```
+
+`fetch` writes `Ifx.lock` and extracts the manifest and declared `.ifx` exports into
+`.ifx/deps/<sha256-of-url-and-revision>/`. Commit `Ifx.toml` and `Ifx.lock`; ignore
+`.ifx/`. The lock records the URL, exact commit and SHA-256 of every extracted file.
+Changing the URL/revision requires fetching again. Checks reject stale locks,
+missing cache files and modified cached contents; analysis uses the same bytes it
+verified. Refetching restores the pinned files. A failed fetch preserves the old
+lock; previously completed cache writes may remain. Old cache entries are not
+pruned automatically. Hashes detect changes relative to the lock; they do not
+establish publisher authenticity if the lock itself is changed.
+
+Fetching uses Git objects directly, with no working-tree checkout, hooks, filters,
+build scripts, submodules or configuration execution. Ambient Git configuration,
+credential helpers, redirects and non-HTTPS transports are disabled. The current
+fetcher therefore supports public HTTPS repositories; private credentials, SSH,
+floating branches/tags, registry lookup and nested package dependencies remain
+future work. Local dependency paths must stay beneath the project directory:
+parent/absolute/hidden paths and symlinks are rejected. Shared dependency packages
+must be self-contained but can compose their own exports.
+
+The fetch command currently targets Linux with `/usr/bin/git` and `/usr/bin/prlimit`.
+Each command has a 60-second deadline, including output-pipe completion; cleanup
+kills its process group. Inherited limits are 64 MiB per file, 512 MiB address space,
+30 CPU seconds and 64 file descriptors. A sampled 64 MiB/1,024-entry temporary
+repository budget also stops oversized transfers; this is not a hard aggregate
+disk quota. Git tree/blob output is capped at 256 KiB; an extracted package at 1 MiB.
+These limits intentionally favor small module repositories.
+
+CLI checks find the nearest `Ifx.toml` above a selected source; passing the manifest
+selects its entry. Legacy `import name from "./file.ifx";` remains accepted for the
+original standalone fixtures. Without a manifest, CLI legacy imports are confined
+to the entry directory, and the LSP uses explicitly open buffers only. With a
+manifest, even legacy imports can access only files already in the declared scope.
+Files are opened through directory descriptors with no-follow/nonblocking flags
+and must be regular files. Module errors identify the call site and child path/byte
+offset; cross-file go-to-definition remains a later increment.
 
 ## Ordered configuration and policies
 
@@ -187,21 +294,27 @@ state; a durable implementation and recovery UX remain necessary before real hos
 ## Editor support
 
 Start any LSP 3.17 client with `ifx-lang lsp`. The server supports full-document
-sync, UTF-16 positions, diagnostics, member/value/name completion, schema hover,
+sync, UTF-16 positions, diagnostics, use-path/member/value/name completion, schema hover,
 local go-to-definition, document symbols and conservative whitespace formatting.
 Formatting preserves existing vertical chains and comments; it is not yet a full
 opinionated reformatter. Requests are synchronous and bounded, without background
 jobs; cancellation notifications do not interrupt an active computation.
 
 Neovim 0.11+ configuration is in `editors/ifx.lua`. Put the built binary on PATH
-or change `cmd` to its absolute path. Open imported `.ifx` files as buffers too.
-Typing performs no commands, provider calls, secret resolution or disk imports.
+or change `cmd` to its absolute path. Initialize the client with the project workspace
+root. The server discovers the nearest manifest within that boundary and reads
+only its declared sources and verified cached dependencies. Directory symlinks are
+rejected during discovery. Open local buffers override saved source; closing them
+restores saved content. Saving or watched-file notifications recheck consumers
+(the VS Code adapter watches manifests, locks and `.ifx` files). Manifest edits must
+be saved before they change scope; unsaved TOML analysis is not implemented.
+Typing performs no commands, provider calls, secret resolution or Git fetching.
 The compiler, editor and simulator do not start a local IFXD.
 
 A thin [VS Code adapter](../editors/vscode/README.md) starts the same Rust server
 using the standard language client. Its package and JavaScript syntax are checked;
 an end-to-end VS Code UI session remains unverified on this host. The CLI's bounded
-file loader currently targets Unix (Linux/macOS); Windows packaging is not included.
+file loader targets Unix; Git fetching currently requires Linux. Windows packaging is not included.
 
 Limits: 256 KiB/source, 32 modules and 1 MiB aggregate source, 24,000 tokens/source,
 48 syntax nesting/chain levels, 8 module nesting levels, 10,000 evaluation steps per
@@ -216,6 +329,9 @@ Fast behavioral suite: `cargo test -p ifx-lang`. Fixtures test graph lowering,
 identity under rename/map reorder, typed local modules, unknown values, policies,
 drift/replacement/recovery, source order, incomplete buffers, Unicode positions,
 CLI/LSP agreement, stdio framing, import boundaries and bounded input handling.
+Project component tests cover offline package scope, real local Git object extraction,
+lock/cache round trips, tamper detection, symlink boundaries and helper termination.
+They do not contact an HTTPS server; live network transport acceptance remains unverified.
 
 Full checks include workspace formatting, Clippy, tests and generated-schema/docs
 checks. Optional installed-tool checks, from the repository root:

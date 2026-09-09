@@ -1,0 +1,13 @@
+input label: String = "server";
+input region: String = "us-east";
+
+resource vm = linode.instance("vm")
+    .label(label)
+    .region(region)
+    .type("g6-nanode-1")
+    .image("linode/debian12")
+    .configure("bootstrap", |host| {
+        host.directory("/srv/app").ensure();
+    });
+
+output address: String = vm.ipv4;

@@ -3,6 +3,6 @@ vim.filetype.add({ extension = { ifx = 'ifx' } })
 vim.lsp.config('ifx', {
   cmd = { 'ifx-lang', 'lsp' },
   filetypes = { 'ifx' },
-  root_markers = { '.git' },
+  root_markers = { 'Ifx.toml', '.git' },
 })
 vim.lsp.enable('ifx')

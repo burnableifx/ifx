@@ -11,8 +11,9 @@ Terraform or Pulumi provider API. Resource names in sketches are design proposal
 | [03-linode-web-stack.sketch.ifx](03-linode-web-stack.sketch.ifx) | VPC, database, VM pool, shared load balancer, firewall and DNS | Proposed resource/field APIs |
 | [04-aws-network.sketch.ifx](04-aws-network.sketch.ifx) | Public/private subnets, route tables, NAT and an S3 endpoint | Proposed AWS APIs and explicit `depends_on` builder |
 | [05-application-lifecycle.sketch.ifx](05-application-lifecycle.sketch.ifx) | Convergence, one-time setup, migrations, reloads and runtime observations | Proposed command/reload host APIs; existing policy syntax |
+| [06-shared-modules.ifx](06-shared-modules.ifx) | Rust-style `use`, aliases and a shared package defined by [Ifx.toml](Ifx.toml) | Compiles today; local dependency, no network needed |
 
-All five use the current parser's grammar. A `.sketch.ifx` file is intentionally
+All six use the current parser's grammar. A `.sketch.ifx` file is intentionally
 not accepted by the current semantic checker: it will report unsupported resources
 or methods. These files explore the language's feel; they are not runnable deployment
 recipes or approved Burnable resource packages. Existing IFX provider resources may
@@ -32,7 +33,10 @@ a VM or install nginx. Provider output references in the compiled graph stay def
 For the compact original fixtures, see [configure.ifx](configure.ifx) for observable
 policy counters, [linode.ifx](linode.ifx) for keyed resource generation, and
 [modules.ifx](modules.ifx) / [machine.ifx](machine.ifx) for typed inputs/outputs across
-files. The [language guide](../../docs/language.md) specifies current behavior.
+files. [shared/Ifx.toml](shared/Ifx.toml) defines a self-contained package suitable
+for its own Git repository; its two exports compose using `crate::`. Check the
+complete example with `cargo run -p ifx-lang -- check examples/language/Ifx.toml`.
+The [language guide](../../docs/language.md) specifies current behavior.
 
 A few design points to inspect while reading:
 

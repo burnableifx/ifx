@@ -1,4 +1,4 @@
-import machine from "./machine.ifx";
+use crate::machine;
 module east = machine("east").label("web-east").region("us-east");
 module west = machine("west").label("web-west").region("us-west");
 output east_address: String = east.address;

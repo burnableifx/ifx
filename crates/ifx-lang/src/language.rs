@@ -129,6 +129,7 @@ pub struct Hint {
 }
 #[derive(Default)]
 pub struct Analysis {
+    pub modules: Vec<String>,
     pub diagnostics: Vec<Diagnostic>,
     pub compilation: Option<Compilation>,
     pub symbols: Vec<Symbol>,
@@ -149,6 +150,15 @@ pub fn analyze(source: &str) -> Analysis {
 }
 /// All module contents are explicit inputs. This function never opens files.
 pub fn analyze_workspace(entry: &str, sources: &BTreeMap<String, String>) -> Analysis {
+    analyze_project(entry, sources, &BTreeMap::new())
+}
+/// Imports are resolved by the caller; analysis remains independent of disk and Git.
+pub type Imports = BTreeMap<String, BTreeMap<String, String>>;
+pub fn analyze_project(
+    entry: &str,
+    sources: &BTreeMap<String, String>,
+    imports: &Imports,
+) -> Analysis {
     if sources.len() > 32 || sources.values().map(String::len).sum::<usize>() > 1024 * 1024 {
         return Analysis {
             diagnostics: vec![Diagnostic::new(
@@ -173,12 +183,17 @@ pub fn analyze_workspace(entry: &str, sources: &BTreeMap<String, String>) -> Ana
         .collect();
     let parsed = &parsed_modules[entry];
     let mut analysis = Analysis {
+        modules: imports
+            .get(entry)
+            .map(|m| m.keys().cloned().collect())
+            .unwrap_or_default(),
         diagnostics: parsed.diagnostics.clone(),
         ..Analysis::default()
     };
     let schemas = catalog();
     let mut checker = Evaluator::new(&schemas, true, &mut analysis);
     checker.sources = Some(sources);
+    checker.imports = Some(imports);
     checker.parsed_modules = Some(&parsed_modules);
     checker.path = entry.into();
     checker.scope = Span {
@@ -192,6 +207,7 @@ pub fn analyze_workspace(entry: &str, sources: &BTreeMap<String, String>) -> Ana
     if analysis.diagnostics.is_empty() {
         let mut compiler = Evaluator::new(&schemas, false, &mut analysis);
         compiler.sources = Some(sources);
+        compiler.imports = Some(imports);
         compiler.parsed_modules = Some(&parsed_modules);
         compiler.path = entry.into();
         compiler.output.source_digests = sources
@@ -236,6 +252,7 @@ pub(crate) struct Evaluator<'a> {
     work: usize,
     scope: Span,
     sources: Option<&'a BTreeMap<String, String>>,
+    imports: Option<&'a Imports>,
     path: String,
     namespace: Vec<String>,
     module_depth: usize,
@@ -261,6 +278,7 @@ impl<'a> Evaluator<'a> {
             work: 0,
             scope: Span::default(),
             sources: None,
+            imports: None,
             path: String::new(),
             namespace: Vec::new(),
             module_depth: 0,
@@ -325,6 +343,31 @@ impl<'a> Evaluator<'a> {
     }
     fn statement(&mut self, s: &Stmt, env: &mut Env) -> Result<()> {
         match &s.kind {
+            StmtKind::Use { name, path } => {
+                if !self.identity.is_empty() || self.block_depth != 0 {
+                    return Err(Diagnostic::new(
+                        s.span,
+                        "use declarations belong at module scope",
+                    ));
+                }
+                let target = self
+                    .imports
+                    .and_then(|all| all.get(&self.path))
+                    .and_then(|visible| visible.get(path))
+                    .filter(|target| {
+                        self.sources
+                            .is_some_and(|sources| sources.contains_key(*target))
+                    })
+                    .ok_or_else(|| {
+                        Diagnostic::new(
+                            s.span,
+                            format!(
+                                "module `{path}` is not declared in this package's Ifx.toml scope"
+                            ),
+                        )
+                    })?;
+                self.bind(env, name, Val::ModuleDefinition(target.clone()))?;
+            }
             StmtKind::Import { name, path } => {
                 if !self.identity.is_empty() || self.block_depth != 0 {
                     return Err(Diagnostic::new(s.span, "imports belong at module scope"));

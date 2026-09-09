@@ -24,7 +24,19 @@ local definition = assert(client:request_sync('textDocument/definition', {
   textDocument = { uri = uri }, position = { line = 1, character = 29 },
 }, 5000, buffer))
 assert(definition.result.range.start.line == 0, 'definition did not resolve local binding')
+vim.api.nvim_buf_set_lines(buffer, 0, -1, false, { 'use shared::' })
+assert(vim.wait(5000, function() return #vim.diagnostic.get(buffer) > 0 end), 'partial use did not produce diagnostics')
+local imports = assert(client:request_sync('textDocument/completion', {
+  textDocument = { uri = uri }, position = { line = 0, character = 12 },
+}, 5000, buffer))
+local web = false
+for _, item in ipairs(imports.result.items) do if item.label == 'shared::web' then web = true end end
+assert(web, 'manifest-scoped use completion missing')
+vim.api.nvim_buf_set_lines(buffer, 0, -1, false, {
+  'use shared::web;', 'module app = web("editor");', 'output url: String = app.url;',
+})
+assert(vim.wait(5000, function() return #vim.diagnostic.get(buffer) == 0 end), 'saved dependency modules did not resolve without open buffers')
 client:stop()
 assert(vim.wait(5000, function() return client:is_stopped() end), 'LSP did not shut down')
-print('IFX Neovim: initialization, incomplete completion, unsaved diagnostics, definition, shutdown passed')
+print('IFX Neovim: initialization, incomplete completion, unsaved diagnostics, definition, package imports, shutdown passed')
 vim.cmd('qa!')

@@ -2,7 +2,7 @@ use anyhow::{Context, bail};
 use clap::{Parser, Subcommand};
 use ifx_lang::{
     language::{analyze_workspace, module_path},
-    lsp,
+    lsp, project,
     simulator::Simulator,
     syntax::{self, MAX_SOURCE, StmtKind},
 };
@@ -38,6 +38,11 @@ enum Command {
     Format {
         file: PathBuf,
     },
+    /// Fetch explicitly declared, pinned Git module packages and write Ifx.lock.
+    Fetch {
+        #[arg(long, default_value = "Ifx.toml")]
+        manifest_path: PathBuf,
+    },
     Lsp,
 }
 fn read(path: &PathBuf) -> anyhow::Result<String> {
@@ -72,9 +77,24 @@ fn main() -> anyhow::Result<()> {
         | Command::Simulate { file, .. }
         | Command::Format { file } => file,
         Command::Lsp => return Ok(lsp::serve()?),
+        Command::Fetch { manifest_path } => {
+            anyhow::ensure!(
+                manifest_path.file_name().is_some_and(|n| n == "Ifx.toml"),
+                "manifest must be named Ifx.toml"
+            );
+            let root = manifest_path
+                .parent()
+                .filter(|p| !p.as_os_str().is_empty())
+                .unwrap_or(std::path::Path::new("."));
+            project::fetch(root)?;
+            println!("dependencies fetched; commit Ifx.toml and Ifx.lock, ignore .ifx/");
+            return Ok(());
+        }
     };
-    let source = read(file)?;
+    let manifest = file.file_name().is_some_and(|n| n == "Ifx.toml");
+    let mut source = if manifest { String::new() } else { read(file)? };
     if matches!(cli.command, Command::Format { .. }) {
+        anyhow::ensure!(!manifest, "format expects an .ifx source, not Ifx.toml");
         print!("{}", lsp::format_source(&source));
         return Ok(());
     }
@@ -87,9 +107,39 @@ fn main() -> anyhow::Result<()> {
         .file_name()
         .and_then(|s| s.to_str())
         .context("entry filename must be UTF-8")?;
-    let mut sources = BTreeMap::from([(entry.to_string(), source.clone())]);
-    load_modules(&root, entry, &mut sources)?;
-    let analysis = analyze_workspace(entry, &sources);
+    let project_root = if manifest {
+        Some(root.clone())
+    } else {
+        project::find_root(&root, None)
+    };
+    let analysis = if let Some(root) = project_root {
+        let snapshot = project::load(&root, &BTreeMap::new())?;
+        let selected = if manifest {
+            let entry = snapshot
+                .entry
+                .as_ref()
+                .context("library package has no entry; select an exported .ifx file")?;
+            snapshot
+                .paths
+                .get(entry)
+                .context("missing project entry")?
+                .clone()
+        } else {
+            file.canonicalize()?
+        };
+        let id = snapshot
+            .paths
+            .iter()
+            .find(|(_, p)| **p == selected)
+            .map(|(id, _)| id)
+            .context("file is not declared in Ifx.toml")?;
+        source = snapshot.sources[id].clone();
+        snapshot.analyze(id)
+    } else {
+        let mut sources = BTreeMap::from([(entry.to_string(), source.clone())]);
+        load_modules(&root, entry, &mut sources)?;
+        analyze_workspace(entry, &sources)
+    };
     if !analysis.diagnostics.is_empty() {
         for d in analysis.diagnostics {
             let p = lsp::position(&source, d.span.start);
@@ -160,25 +210,7 @@ fn load_modules(
         if sources.len() >= 32 {
             bail!("module count exceeds 32");
         }
-        let mut directory = std::fs::File::open(root)?;
-        let components: Vec<_> = std::path::Path::new(&path).components().collect();
-        for (index, component) in components.iter().enumerate() {
-            let mut flags = rustix::fs::OFlags::RDONLY
-                | rustix::fs::OFlags::NOFOLLOW
-                | rustix::fs::OFlags::NONBLOCK
-                | rustix::fs::OFlags::CLOEXEC;
-            if index + 1 < components.len() {
-                flags |= rustix::fs::OFlags::DIRECTORY;
-            }
-            let descriptor = rustix::fs::openat(
-                &directory,
-                component.as_os_str(),
-                flags,
-                rustix::fs::Mode::empty(),
-            )?;
-            directory = std::fs::File::from(descriptor);
-        }
-        let text = read_file(directory)?;
+        let text = project::read_at(&project::open_root(root)?, &path)?;
         sources.insert(path.clone(), text);
         load_modules(root, &path, sources)?;
     }

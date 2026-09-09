@@ -1,14 +1,16 @@
 //! Minimal LSP 3.17 stdio adapter. Full-document sync, UTF-16 positions, bounded frames.
-//! Analysis never reads a workspace file: only explicitly supplied open buffers.
+//! Project files are read only within initialized workspaces; Git fetching is never implicit.
 use crate::{
     analyze,
     language::{Analysis, analyze_workspace},
+    project,
     syntax::{MAX_SOURCE, Span},
 };
 use serde_json::{Value, json};
 use std::{
     collections::BTreeMap,
     io::{self, BufRead, Read, Write},
+    path::{Path, PathBuf},
 };
 
 const MAX_FRAME: usize = 2 * 1024 * 1024;
@@ -20,6 +22,7 @@ struct Document {
 #[derive(Default)]
 pub struct Server {
     documents: BTreeMap<String, Document>,
+    roots: Vec<PathBuf>,
     initialized: bool,
     shutdown: bool,
 }
@@ -48,10 +51,20 @@ impl Server {
             if self.initialized {
                 return error(-32600, "already initialized");
             }
+            self.roots = params["workspaceFolders"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|folder| folder["uri"].as_str())
+                .chain(params["rootUri"].as_str())
+                .take(8)
+                .filter_map(file_path)
+                .filter_map(|p| p.canonicalize().ok())
+                .collect();
             self.initialized = true;
             return reply(json!({"capabilities":{
-                "positionEncoding":"utf-16", "textDocumentSync":{"openClose":true,"change":1},
-                "completionProvider":{"triggerCharacters":["."]},"hoverProvider":true,"definitionProvider":true,
+                "positionEncoding":"utf-16", "textDocumentSync":{"openClose":true,"change":1,"save":true},
+                "completionProvider":{"triggerCharacters":[".",":"]},"hoverProvider":true,"definitionProvider":true,
                 "documentSymbolProvider":true,"documentFormattingProvider":true
             },"serverInfo":{"name":"ifx-lang","version":env!("CARGO_PKG_VERSION")}}));
         }
@@ -108,7 +121,7 @@ impl Server {
                 let mut analysis = if text.len() > MAX_SOURCE {
                     analyze(text)
                 } else {
-                    analyze_workspace(uri, &sources)
+                    analyze_document(uri, &sources, &self.roots)
                 };
                 analysis.compilation = None;
                 let diagnostics: Vec<_> = analysis.diagnostics.iter().map(|d| json!({"range":range(text,d.span),"severity":1,"source":"ifx","message":d.message})).collect();
@@ -134,26 +147,35 @@ impl Server {
                     .iter_mut()
                     .filter(|(key, _)| key.as_str() != uri)
                 {
-                    doc.analysis = analyze_workspace(other, &sources);
+                    doc.analysis = analyze_document(other, &sources, &self.roots);
                     doc.analysis.compilation = None;
                     let diagnostics:Vec<_>=doc.analysis.diagnostics.iter().map(|d|json!({"range":range(&doc.text,d.span),"severity":1,"source":"ifx","message":d.message})).collect();
                     notifications.push(json!({"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":other,"version":doc.version,"diagnostics":diagnostics}}));
                 }
                 notifications
             }
-            "textDocument/didClose" => {
+            "textDocument/didClose"
+            | "textDocument/didSave"
+            | "workspace/didChangeWatchedFiles" => {
                 let uri = params["textDocument"]["uri"].as_str().unwrap_or("");
-                self.documents.remove(uri);
-                let mut notifications = vec![
-                    json!({"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":uri,"diagnostics":[]}}),
-                ];
+                let closing = method == "textDocument/didClose";
+                if closing {
+                    self.documents.remove(uri);
+                }
+                let mut notifications = if closing {
+                    vec![
+                        json!({"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":uri,"diagnostics":[]}}),
+                    ]
+                } else {
+                    Vec::new()
+                };
                 let sources: BTreeMap<String, String> = self
                     .documents
                     .iter()
                     .map(|(uri, d)| (uri.clone(), d.text.clone()))
                     .collect();
                 for (uri, doc) in &mut self.documents {
-                    doc.analysis = analyze_workspace(uri, &sources);
+                    doc.analysis = analyze_document(uri, &sources, &self.roots);
                     doc.analysis.compilation = None;
                     let diagnostics: Vec<_> = doc.analysis.diagnostics.iter().map(|d|json!({"range":range(&doc.text,d.span),"severity":1,"source":"ifx","message":d.message})).collect();
                     notifications.push(json!({"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":uri,"version":doc.version,"diagnostics":diagnostics}}));
@@ -174,12 +196,17 @@ impl Server {
                     "textDocument/completion" => {
                         let prefix = &doc.text[..offset];
                         let dot = prefix.rfind('.').filter(|&n| prefix[n+1..].chars().all(|c| c.is_ascii_alphanumeric() || c == '_'));
-                        let items: Vec<_> = if let Some(hint) = doc.analysis.argument_hints.iter().find(|h| h.span.start <= offset && offset <= h.span.end && !h.items.is_empty()) {
+                        let line_start = prefix.rfind('\n').map_or(0, |i| i + 1);
+                        let line = prefix[line_start..].trim_start();
+                        let use_prefix = line.strip_prefix("use ").map(str::trim_start);
+                        let items: Vec<_> = if let Some(typed) = use_prefix.filter(|s| !s.chars().any(char::is_whitespace)) {
+                            doc.analysis.modules.iter().filter(|p| p.starts_with(typed)).map(|p| json!({"label":p,"kind":9,"textEdit":{"range":range(&doc.text,Span {start:offset-typed.len(),end:offset}),"newText":p}})).collect()
+                        } else if let Some(hint) = doc.analysis.argument_hints.iter().find(|h| h.span.start <= offset && offset <= h.span.end && !h.items.is_empty()) {
                             hint.items.iter().map(|c| json!({"label":c.label,"kind":12,"detail":c.detail})).collect()
                         } else if let Some(dot) = dot {
                             doc.analysis.hints.iter().filter(|h| h.span.end <= dot && doc.text[h.span.end..dot].trim().is_empty()).max_by_key(|h| h.span.end-h.span.start).map(|h| h.items.iter().map(|c| json!({"label":c.label,"kind":2,"detail":c.detail})).collect()).unwrap_or_default()
                         } else {
-                            let mut items: Vec<_> = ["resource", "let", "input", "output", "for", "if", "linode", "memory"].iter().map(|s| json!({"label":s,"kind":14})).collect();
+                            let mut items: Vec<_> = ["use", "module", "resource", "let", "input", "output", "for", "if", "linode", "memory"].iter().map(|s| json!({"label":s,"kind":14})).collect();
                             items.extend(doc.analysis.symbols.iter().filter(|s| s.span.start <= offset && s.scope.start <= offset && offset <= s.scope.end).map(|s| json!({"label":s.name,"kind":6,"detail":s.detail}))); items
                         };
                         reply(json!({"isIncomplete":false,"items":items}))
@@ -206,6 +233,61 @@ impl Server {
             _ => error(-32601, "method not supported"),
         }
     }
+}
+/// Accept local absolute file URIs, including percent-encoded UTF-8. Never accept remote authorities.
+fn file_path(uri: &str) -> Option<PathBuf> {
+    let encoded = uri.strip_prefix("file://")?;
+    if !encoded.starts_with('/') || encoded.contains(['?', '#']) {
+        return None;
+    }
+    let mut bytes = Vec::new();
+    let mut input = encoded.bytes();
+    while let Some(byte) = input.next() {
+        bytes.push(if byte == b'%' {
+            let high = char::from(input.next()?).to_digit(16)?;
+            let low = char::from(input.next()?).to_digit(16)?;
+            (high * 16 + low) as u8
+        } else {
+            byte
+        });
+    }
+    let decoded = String::from_utf8(bytes).ok()?;
+    if decoded.contains('\0') || decoded.split('/').any(|p| matches!(p, "." | "..")) {
+        return None;
+    }
+    Some(PathBuf::from(decoded))
+}
+fn analyze_document(uri: &str, sources: &BTreeMap<String, String>, roots: &[PathBuf]) -> Analysis {
+    let Some(path) = file_path(uri) else {
+        return analyze_workspace(uri, sources);
+    };
+    let Some(boundary) = roots
+        .iter()
+        .filter(|root| path.starts_with(root))
+        .max_by_key(|p| p.components().count())
+    else {
+        return analyze_workspace(uri, sources);
+    };
+    let overlays = sources
+        .iter()
+        .filter_map(|(uri, text)| file_path(uri).map(|p| (p, text.clone())))
+        .collect();
+    let snapshot =
+        match project::load_in_workspace(path.parent().unwrap_or(boundary), boundary, &overlays) {
+            Ok(Some(snapshot)) => snapshot,
+            Ok(None) => return analyze_workspace(uri, sources),
+            Err(error) => return project::diagnostic(error),
+        };
+    let Some((entry, _)) = snapshot
+        .paths
+        .iter()
+        .find(|(_, p)| p.as_path() == Path::new(&path))
+    else {
+        return project::diagnostic(project::Error::Invalid(
+            "file is not declared in Ifx.toml".into(),
+        ));
+    };
+    snapshot.analyze(entry)
 }
 /// Conservative formatting for the first grammar: trim line ends, normalize final newline.
 /// No AST reprinting, which would discard comments and break incomplete buffers.

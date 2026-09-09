@@ -365,7 +365,11 @@ fn typed_local_modules_namespace_resources_and_return_deferred_outputs() {
             include_str!("../../../examples/language/machine.ifx").into(),
         ),
     ]);
-    let a = ifx_lang::language::analyze_workspace("main.ifx", &sources);
+    let imports = BTreeMap::from([(
+        "main.ifx".into(),
+        BTreeMap::from([("crate::machine".into(), "machine.ifx".into())]),
+    )]);
+    let a = ifx_lang::language::analyze_project("main.ifx", &sources, &imports);
     assert!(a.diagnostics.is_empty(), "{:?}", a.diagnostics);
     let c = a.compilation.unwrap();
     assert_eq!(c.program.resources.len(), 2);
@@ -380,7 +384,7 @@ fn typed_local_modules_namespace_resources_and_return_deferred_outputs() {
         .unwrap()
         .push_str("\nmodule bad = machine(\"bad\").region(42);");
     assert!(
-        ifx_lang::language::analyze_workspace("main.ifx", &bad)
+        ifx_lang::language::analyze_project("main.ifx", &bad, &imports)
             .diagnostics
             .iter()
             .any(|d| d.message.contains("expected string"))

@@ -54,6 +54,10 @@ pub struct Stmt {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum StmtKind {
+    Use {
+        name: Name,
+        path: String,
+    },
     Import {
         name: Name,
         path: String,
@@ -270,7 +274,7 @@ impl Parser<'_> {
                         && !self.is(";")
                         && !matches!(
                             self.token().text.as_str(),
-                            "let" | "resource" | "input" | "output" | "if" | "for"
+                            "let" | "resource" | "input" | "output" | "if" | "for" | "use"
                         )
                     {
                         self.take();
@@ -299,6 +303,27 @@ impl Parser<'_> {
     fn statement(&mut self) -> Result<Stmt> {
         let start = self.token().span.start;
         let kind = match self.token().text.as_str() {
+            "use" => {
+                self.take();
+                let mut name = self.name()?;
+                let mut parts = vec![name.text.clone()];
+                while self.eat(":") {
+                    self.need(":")?;
+                    name = self.name()?;
+                    parts.push(name.text.clone());
+                }
+                if parts.len() < 2 {
+                    return Err(Diagnostic::new(name.span, "use requires package::module"));
+                }
+                if self.eat("as") {
+                    name = self.name()?;
+                }
+                self.need(";")?;
+                StmtKind::Use {
+                    name,
+                    path: parts.join("::"),
+                }
+            }
             "import" => {
                 self.take();
                 let name = self.name()?;
