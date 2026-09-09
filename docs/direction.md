@@ -80,10 +80,35 @@ recorded with every run, which approvals already require.
 Compilation is arbitrary code execution; that is why it must never happen on a host that
 holds credentials for more than one caller. Hosted executors accept only emitted Programs.
 
-Editor integration is deferred. Rust stacks already get diagnostics from rust-analyzer and
-the generated typed builders; anything IFX-specific worth showing in an editor is plan-aware
-(current state, replace-versus-update, output values) and would be a client of `ifxd`, not a
-language server over source.
+## Authoring DSL and language server
+
+Updated requirement (2026-09-08): IFX will supply a DSL and first-class language
+server as one authoring product. Rust remains the implementation language, and
+existing Rust stacks remain supported during migration. Grammar, frontend library
+and initial language subset are still open; neither DSL nor LSP is implemented.
+
+The CLI and language server will share parsing, module/name resolution, type
+checking and semantic diagnostics, with source ranges preserved through lowering
+to local IFX Programs. Existing resource schemas provide field/type documentation,
+defaults, required/exclusive fields, sensitive/replacement annotations and typed
+outputs; export versioned metadata without loading provider execution code.
+
+The first increment is an editor-assisted single-resource module: completion of
+resources/fields/values, diagnostics on incomplete source, hover, local navigation,
+formatting and agreement with CLI checks. Later module/collection/conditional/action
+constructs ship with corresponding editor support, including cross-module references
+and identity-aware rename. Use standard LSP with thin editor integrations; verify
+the same server in VS Code and Neovim. Schema hints do not replace managed admission.
+
+Typing and navigation must not run actions, invoke Cargo or provider plugins,
+resolve secrets, or call cloud APIs. Modules compile locally on explicit execution;
+`burn` embeds IFX and needs no local IFXD daemon. The language server is an optional
+local editor process. Explicit cloud-aware planning is separate from static editing
+and must preserve source/catalog/observation provenance without setup side effects.
+
+Design the first subset against real resource/module/action examples before
+freezing syntax. Prototype editor and CLI behavior together rather than completing
+a language implementation and adding the LSP afterward.
 
 ## Providers as programs
 
