@@ -49,7 +49,7 @@ names of local variables or return fields.
 | [shared/src/web.ifx](shared/src/web.ifx) | Reusable package, resource handle fields, read-only method, configuration | Existing Linode fields and in-memory host methods |
 | [02-environments.ifx](02-environments.ifx) | Struct defaults, map keys, conditional deployment, fleet constructor returning an empty struct | Same shared component |
 | [03-lifecycle.ifx](03-lifecycle.ifx) | Convergence, once/always/on-change, source-order observations | Existing `memory.value` simulator target and host operations |
-| [04-values.ifx](04-values.ifx) | Pure function, ordinary struct literal, pure fluent constructor, method | Data only; no graph declarations |
+| [04-values.ifx](04-values.ifx) | Pure function, ordinary struct literal, pure fluent constructor, method, named output struct | Data only; no graph declarations |
 
 The Linode example installs/starts nginx in its deferred configuration body but
 does not claim application deployment, firewall configuration, DNS, TLS or actual
@@ -100,6 +100,9 @@ let description = data.description();
 A semicolon finalizes a builder used as a complete `let` initializer or expression
 statement. It registers graph declarations locally or produces a data value. It
 never provisions a machine. Missing keys/parameters fail before a graph is emitted.
+`main` returns either `Unit` or a named output struct. The application publishes
+`Deployment`; the values example publishes `ValuesOutputs`. Fleet and lifecycle
+publish no outputs. Ordinary helpers/methods may still return scalars or collections.
 Pending builders cannot be returned or stored inside other values. Return completed
 values with an explicit `return`; omitting a result does not remove infrastructure.
 

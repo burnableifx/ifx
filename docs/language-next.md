@@ -469,8 +469,15 @@ checked. The same resolved inputs feed check, compile and simulate; no ambient
 environment/file discovery supplies missing values. Resource handles and deferred
 values cannot be fabricated as external inputs.
 
+Every entry `main` must return either `Unit` (including an omitted result type) or
+one named user-defined output struct. Direct scalar, collection and provider-handle
+return types are rejected by both CLI and LSP. Ordinary functions and methods keep
+their general return types. Output struct fields may contain scalars, collections,
+nested structs, resource handles and deferred values; the struct names the public
+result fields. A Unit entry publishes no outputs and retains all declared resources.
+
 The root result is an explicit API value. The target result contract will carry its type as well as encoded
-reference projections; the current envelope carries only values/projections alongside the complete graph and configurations. Root results
+reference projections; the current envelope carries only values/projections alongside the complete graph and configurations. Fields of the root output struct
 may include handles/structs. A handle serializes as its canonical kind/URN reference,
 never as its provider credentials or local transport capability. Host/connection
 capabilities are not legal public result values in this edition. An apply consumer

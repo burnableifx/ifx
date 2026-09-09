@@ -19,12 +19,16 @@ fn label(prefix: String, suffix: String) -> String {
     return prefix + "-" + suffix;
 }
 
-fn main() -> String {
+pub struct ValuesOutputs {
+    pub description: String,
+}
+
+fn main() -> ValuesOutputs {
     let name = label("production", "web");
     let direct = Settings { name: name };
     let constructed = Settings::new()
         .name(name)
         .region(direct.region);
 
-    return constructed.description();
+    return ValuesOutputs { description: constructed.description() };
 }

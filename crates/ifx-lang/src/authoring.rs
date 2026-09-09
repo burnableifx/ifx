@@ -850,6 +850,18 @@ impl Front<'_> {
                     "new must be an associated constructor returning Self",
                 ));
             }
+            if call.owner.is_none()
+                && call.function.name.text == "main"
+                && !matches!(
+                    self.ty(&call.function.result, call.function.name.span)?,
+                    Ty::Unit | Ty::Record(_)
+                )
+            {
+                return Err(error(
+                    call.function.name.span,
+                    "main must return Unit or a named output struct; wrap output values in a struct",
+                ));
+            }
             if call.function.public {
                 self.public_type(
                     &self.ty(&call.function.result, call.function.name.span)?,

@@ -83,7 +83,7 @@ fn application_fleet_and_values_are_executable() {
     let values = example(&s, "04-values.ifx", BTreeMap::new());
     assert!(values.program.resources.is_empty());
     assert!(
-        values.outputs["result"]
+        values.outputs["description"]
             .as_str()
             .unwrap()
             .contains("us-east")
@@ -193,7 +193,7 @@ fn ordinary_calls_are_pure_and_builders_cannot_escape() {
         "pending builders",
     );
     rejects(
-        r#"use ifx::memory::Value; fn main() -> Value { return Value::new().key("x"); }"#,
+        r#"use ifx::memory::Value; struct Output { value: Value } fn main() -> Output { return Output { value: Value::new().key("x") }; }"#,
         "pending builders",
     );
     rejects(
@@ -205,7 +205,7 @@ fn ordinary_calls_are_pure_and_builders_cannot_escape() {
         "unknown method",
     );
     rejects(
-        r#"fn label(a: String = 1) -> String { return a; } fn main() -> String { return label("override"); }"#,
+        r#"fn label(a: String = 1) -> String { return a; } fn main() { let name = label("override"); }"#,
         "expected",
     );
     rejects(
@@ -221,10 +221,11 @@ struct Data { pub value: String = "default" }
 impl Data { fn suffix(s: String) -> String { return s + "!"; } }
 fn second(xs: List[String]) -> String { return xs[1]; }
 fn lookup(xs: Map[String]) -> String { return xs["wanted"]; }
-fn main() -> String {
+struct Output { pub result: String }
+fn main() -> Output {
     let empty: List[String] = [];
     for s in empty { let same: String = s; }
-    return Data::suffix(second(["zero", "one"])) + lookup({"wanted": "two"});
+    return Output { result: Data::suffix(second(["zero", "one"])) + lookup({"wanted": "two"}) };
 }"#,
     );
     assert_eq!(c.outputs["result"], "one!two");
@@ -236,7 +237,7 @@ fn main() { Instance::new().key("web").label("web").region("us-east").type("g6-n
 }
 #[test]
 fn modules_obey_visibility_and_imports_are_definition_only() {
-    let sources=BTreeMap::from([("main".into(),"use library::Thing as Item; fn main() -> String { let data = Item::new(); return data.value; }".into()),("lib".into(),"pub struct Thing { pub value: String } impl Thing { pub fn new() -> Self { return Self {value: \"ok\"}; } } fn main() { let bad = 1; }".into())]);
+    let sources=BTreeMap::from([("main".into(),"use library::Thing as Item; struct Output { pub result: String } fn main() -> Output { let data = Item::new(); return Output { result: data.value }; }".into()),("lib".into(),"pub struct Thing { pub value: String } impl Thing { pub fn new() -> Self { return Self {value: \"ok\"}; } } fn main() { let bad = 1; }".into())]);
     let imports = BTreeMap::from([(
         "main".into(),
         BTreeMap::from([("library".into(), "lib".into())]),
@@ -386,12 +387,13 @@ fn deferred_collection_elements_keep_types_through_helpers_and_captures() {
     let c = compile(
         r#"use ifx::linode::Instance;
 fn first(xs: List[String]) -> String { return xs[0]; }
-fn main() -> String {
+struct Output { pub result: String }
+fn main() -> Output {
     let origin=Instance::new().key("origin").label("origin").region("us-east").type("g6-nanode-1").image("linode/debian12");
     let addresses=[origin.ipv4];
     let target=Instance::new().key("target").label("target").region("us-east").type("g6-nanode-1").image("linode/debian12")
         .configure("address", |host| { host.file("/etc/origin").content(addresses[0]).ensure(); });
-    return first(origin.ipv4s);
+    return Output { result: first(origin.ipv4s) };
 }"#,
     );
     assert_eq!(
@@ -416,7 +418,7 @@ fn main() -> String {
 }
 #[test]
 fn root_inputs_are_concrete_typed_and_optional_for_editor_checks() {
-    let source = "fn main(names: List[String]) -> String { return names[1]; }";
+    let source = "struct Output { pub result: String } fn main(names: List[String]) -> Output { return Output { result: names[1] }; }";
     let sources = BTreeMap::from([("main".into(), source.into())]);
     assert!(
         authoring::check("main", &sources, &BTreeMap::new())
@@ -527,4 +529,93 @@ fn literal_keys_cannot_alias_nested_namespace_paths() {
         .collect();
     assert!(paths.contains(&vec![r#"["east","leaf"]"#.into()]));
     assert!(paths.contains(&vec!["east".into(), "leaf".into()]));
+}
+
+#[test]
+fn main_requires_named_outputs_while_helpers_keep_general_results() {
+    for (ty, body) in [
+        ("String", r#"return "value";"#),
+        ("Int", "return 1;"),
+        ("Bool", "return true;"),
+        ("List[String]", r#"return ["value"];"#),
+        ("Map[String]", r#"return {"name": "value"};"#),
+        (
+            "Value",
+            r#"let vm = Value::new().key("vm").value(1); return vm;"#,
+        ),
+    ] {
+        let source = format!("use ifx::memory::Value; fn main() -> {ty} {{ {body} }}");
+        rejects(&source, "main must return Unit or a named output struct");
+        let checked = authoring::check(
+            "main",
+            &BTreeMap::from([("main".into(), source)]),
+            &BTreeMap::new(),
+        );
+        assert!(
+            checked.diagnostics.iter().any(|d| d
+                .message
+                .contains("main must return Unit or a named output struct")),
+            "editor accepted {ty}"
+        );
+    }
+    for source in ["fn main() {}", "fn main() -> Unit { return; }"] {
+        assert!(compile(source).outputs.is_empty());
+    }
+    let c = compile(
+        r#"
+use ifx::memory::Value;
+struct Output { pub label: String, pub ports: List[Int], pub flags: Map[Bool], pub vm: Value }
+fn label() -> String { return "web"; }
+fn ports() -> List[Int] { return [80, 443]; }
+fn flags() -> Map[Bool] { return {"enabled": true}; }
+fn identity(vm: Value) -> Value { return vm; }
+fn main() -> Output {
+    let vm = Value::new().key("vm").value(1);
+    return Output { label: label(), ports: ports(), flags: flags(), vm: identity(vm) };
+}
+"#,
+    );
+    assert_eq!(c.outputs["label"], "web");
+    assert_eq!(c.outputs["ports"], json!([80, 443]));
+    assert_eq!(c.outputs["flags"], json!({"enabled": true}));
+    assert_eq!(
+        c.outputs["vm"]["$resource"],
+        c.program.resources[0].urn.as_str()
+    );
+    assert_eq!(c.program.resources.len(), 1);
+}
+
+#[test]
+fn cli_and_lsp_report_the_same_main_result_contract() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::write(temp.path().join("Ifx.toml"), "[language]\nedition = \"0.2-draft\"\n[package]\nname = \"root_outputs\"\nversion = \"0.1.0\"\nentry = \"main.ifx\"\n").unwrap();
+    let source = "fn main() -> String { return \"website\"; }";
+    let path = temp.path().join("main.ifx");
+    std::fs::write(&path, source).unwrap();
+    let cli = std::process::Command::new(env!("CARGO_BIN_EXE_ifx-lang"))
+        .arg("check")
+        .arg(&path)
+        .output()
+        .unwrap();
+    assert!(!cli.status.success());
+    let mut server = Server::default();
+    server.handle(json!({"id":1,"method":"initialize","params":{"rootUri":format!("file://{}",temp.path().display())}}));
+    let uri = format!("file://{}", path.display());
+    let notices = server.handle(json!({"method":"textDocument/didOpen","params":{"textDocument":{"uri":uri,"version":1,"text":source}}}));
+    let diagnostic = &notices[0]["params"]["diagnostics"][0];
+    let message = diagnostic["message"].as_str().unwrap();
+    assert!(message.contains("main must return Unit or a named output struct"));
+    assert!(String::from_utf8_lossy(&cli.stderr).contains(message));
+    assert_eq!(
+        diagnostic["range"]["start"],
+        json!({"line":0,"character":3})
+    );
+    let valid = "struct Output { pub website: String } fn main() -> Output { return Output { website: \"website\" }; }";
+    let notices = server.handle(json!({"method":"textDocument/didChange","params":{"textDocument":{"uri":uri,"version":2},"contentChanges":[{"text":valid}]}}));
+    assert!(
+        notices[0]["params"]["diagnostics"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
 }
